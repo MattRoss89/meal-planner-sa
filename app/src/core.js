@@ -140,13 +140,13 @@ export const RECIPES = [
 // ---------- Fitness snacks (protein top-ups, 1 serving for one person) ----------
 export const SNACKS = [
   { id: 's_eggs', name: '2 boiled eggs', ing: { eggs: 2 } },
-  { id: 's_yoghurt', name: 'Yoghurt (250 g)', ing: { yoghurt: 250 } },
-  { id: 's_milk', name: 'Glass of milk (400 ml)', ing: { milk: 400 } },
-  { id: 's_tuna', name: 'Tin of tuna', ing: { tuna: 1 } },
+  { id: 's_yoghurt', name: 'Yoghurt with banana', ing: { yoghurt: 250, banana: 1 } },
+  { id: 's_milk', name: 'Glass of milk', ing: { milk: 400 } },
+  { id: 's_tuna', name: 'Tuna mayo on toast', ing: { tuna: 0.5, bread: 1, mayo: 15 } },
   { id: 's_pb_toast', name: 'Peanut butter toast', ing: { bread: 2, peanut_butter: 30 } },
-  { id: 's_chickpeas', name: 'Roasted chickpeas (½ tin)', ing: { chickpeas: 0.5 } },
-  { id: 's_cheese', name: 'Cheese (40 g) & apple', ing: { cheese: 40, apple: 1 } },
-];
+  { id: 's_chickpeas', name: 'Roasted chickpeas', ing: { chickpeas: 0.5 } },
+  { id: 's_cheese', name: 'Cheese & apple', ing: { cheese: 40, apple: 1 } },
+]
 
 // ---------- Diets ----------
 export const DIETS = {

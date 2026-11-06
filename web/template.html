@@ -93,9 +93,14 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 
 /* Meals */
 .meals{border-top:1px solid var(--rule);margin-top:20px}
-.meal{display:grid;grid-template-columns:110px 1fr auto;gap:16px;align-items:baseline;padding:18px 0;border-bottom:1px solid var(--hair)}
+.meal{display:grid;grid-template-columns:110px 1fr auto;gap:16px;align-items:center;padding:18px 0;border-bottom:1px solid var(--hair)}
 .meal-when{color:var(--soft)}
-.meal-main{text-align:left;display:grid;gap:4px}
+.meal-main{text-align:left;display:grid;grid-template-columns:56px 1fr;gap:4px 14px;align-items:center}
+.meal-main .thumb{grid-row:1/3;width:56px;height:56px;transition:transform .25s ease}
+.meal-main:hover .thumb{transform:rotate(-8deg)}
+.sheet .dish{background:var(--sage);margin:12px -28px 22px;padding:26px 0 18px;display:flex;justify-content:center;border-bottom:1px solid var(--rule)}
+.sheet .dish svg{width:min(240px,62vw);height:auto}
+
 .meal-name{font-size:19px;line-height:1.25}
 .meal-meta{color:var(--soft);font-size:13.5px}
 .portion{color:var(--oil)}
@@ -219,6 +224,7 @@ select option:checked{background:var(--sage);color:var(--sage-ink)}
 /*__CORE__*/
 
 // ---------------- State ----------------
+const PLATE_THEME={dish:'var(--paper)',rim:'var(--hair)',shadow:'#0000001c'};
 const TABS=[['plan','The week'],['list','Groceries'],['fitness','Training'],['settings','Settings']];
 let state={tab:'plan',day:todayIdx(),settings:mergeSettings(null),plan:null,locked:{},overrides:{},checked:{}};
 let priceFeed=null,db=null,userId=null,saveTimer=null,sheet=null,lastFocus=null;
@@ -302,7 +308,7 @@ function renderPlan(){
     if(!r){body+=`<div class="meal"><span class="meal-when cap">${m}</span><span class="soft">No recipe fits your requirements</span><span></span></div>`;continue}
     const rn=recipeNutrition(r),p=d.portion||1;
     body+=`<div class="meal"><span class="meal-when cap">${m}</span>
-      <button class="meal-main" data-recipe="${r.id}"><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
+      <button class="meal-main" data-recipe="${r.id}"><span class="thumb" aria-hidden="true">${plateSVG(r,PLATE_THEME,56).replace('viewBox="0 0 200 200"','viewBox="16 16 168 168"')}</span><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
       <span class="meal-act"><button class="link" data-lock="${key}" aria-pressed="${lk}" aria-label="${lk?'Release':'Keep'} ${esc(r.name)} when re-planning">${lk?'Kept':'Keep'}</button><button class="link" data-swap="${key}" aria-label="Swap ${m}">Swap</button></span></div>`;
   }
   if(d.snacks&&d.snacks.length)body+=`<div class="snacks"><span class="meal-when cap" style="color:var(--oil)">Snacks</span><span>${d.snacks.map(x=>esc(recipeById(x).name)).join(' &nbsp;•&nbsp; ')}</span></div>`;
@@ -400,12 +406,13 @@ function renderSheet(){
   }else if(sheet.type==='recipe'){
     const r=recipeById(sheet.id),n=recipeNutrition(r),hh=eaters(state.settings);
     kicker='Recipe';
-    inner=`<h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes &nbsp;•&nbsp; ${n.protein} g protein &nbsp;•&nbsp; ${n.kcal} kcal per person</p><h3>Ingredients for ${householdLabel(state.settings)}</h3><ul class="ing">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];return `<li>${esc(ing.name.replace(/ \(.*\)/,''))}<span>${formatQty({qty:q*hh/4,unit:ing.unit})}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps">`+r.steps.map(x=>`<li><span>${esc(x)}</span></li>`).join('')+`</ol>`;
+    inner=`<div class="dish">${plateSVG(r,PLATE_THEME,240)}</div><h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes &nbsp;•&nbsp; ${n.protein} g protein &nbsp;•&nbsp; ${n.kcal} kcal per person</p><h3>Ingredients for ${householdLabel(state.settings)}</h3><ul class="ing">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];return `<li>${esc(ing.name.replace(/ \(.*\)/,''))}<span>${formatQty({qty:q*hh/4,unit:ing.unit})}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps">`+r.steps.map(x=>`<li><span>${esc(x)}</span></li>`).join('')+`</ol>`;
   }else if(sheet.type==='text'){
     kicker='Groceries';
     inner=`<h2 id="sh-t">Shopping list</h2><p class="sub">Select all, then paste into WhatsApp or Notes.</p><textarea readonly aria-labelledby="sh-t">${esc(listAsText(currentList(),state.settings))}</textarea>`;
   }
   bg.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t"><div class="sheet-top"><span class="cap soft">${kicker}</span><button class="cap link" data-close="1">Close</button></div>${inner}</div>`;
+  const dish=bg.querySelector('.dish');if(dish){const top=bg.querySelector('.sheet-top');top.style.marginBottom='0';top.style.borderBottom='0';}
   document.body.appendChild(bg);
   bg.querySelector('.sheet [data-close]')?.focus();
 }

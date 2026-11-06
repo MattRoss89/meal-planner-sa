@@ -23,6 +23,7 @@ import {
   startTrial, createCheckout, manageSubscription, watchAccount, entitlement, TRIAL_DAYS, PRICE, APP_URL,
 } from './src/backend';
 import { GOOGLE_CLIENT_IDS } from './src/config';
+import Plate from './src/Plate';
 import {
   LIGHT, DARK, FONTS, ThemeCtx, useT, shadow, Icon, T, H, Btn, Chip, Chips, Section, Field, NumInput, Meter, Dashed, ZigZag,
 } from './src/ui';
@@ -154,6 +155,7 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
           {narrow && when}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {!narrow && when}
+            {r && <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: r.id })} accessibilityLabel={`Open recipe: ${r.name}`}><Plate recipe={r} size={52} theme={t} zoom /></TouchableOpacity>}
             <TouchableOpacity style={{ flex: 1, gap: 3 }} disabled={!r} onPress={() => openSheet({ type: 'recipe', id: r.id })}>
               {r ? <H size={19}>{r.name}</H> : <T muted>No recipe fits your requirements</T>}
               {r && <T muted size={13.5}>{r.mins} min  •  {Math.round(rn.protein * p)} g protein{p !== 1 ? <T size={13.5} color={t.train}>  •  Your portion ×{p}</T> : null}</T>}
@@ -421,7 +423,8 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
       })}</>;
   } else if (sheet.type === 'recipe') {
     const r = recipeById(sheet.id), n = recipeNutrition(r), hh = eaters(s);
-    body = <><H size={22}>{r.name}</H><T muted size={14}>{r.mins} minutes. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
+    body = <><View style={{ backgroundColor: t.accentSoft, alignItems: 'center', paddingVertical: 22, marginHorizontal: -20, marginBottom: 18, borderBottomWidth: 1, borderColor: t.rule }}><Plate recipe={r} size={Math.min(240, width * 0.6)} theme={t} /></View>
+      <H size={24}>{r.name}</H><T muted size={14}>{r.mins} minutes. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients for {householdLabel(s)}</H>
       {Object.entries(r.ing).map(([id, q]) => <View key={id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderColor: t.line }}>
         <T>{INGREDIENTS[id].name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: INGREDIENTS[id].unit })}</T></View>)}
