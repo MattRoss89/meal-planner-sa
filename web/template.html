@@ -95,9 +95,9 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .meals{border-top:1px solid var(--rule);margin-top:20px}
 .meal{display:grid;grid-template-columns:110px 1fr auto;gap:16px;align-items:center;padding:18px 0;border-bottom:1px solid var(--hair)}
 .meal-when{color:var(--soft)}
-.meal-main{text-align:left;display:grid;grid-template-columns:56px 1fr;gap:4px 14px;align-items:center}
-.meal-main .thumb{grid-row:1/3;width:56px;height:56px;transition:transform .25s ease}
-.meal-main:hover .thumb{transform:rotate(-8deg)}
+.meal-main{text-align:left;display:grid;grid-template-columns:64px 1fr;gap:4px 14px;align-items:center}
+.meal-main .thumb{grid-row:1/3;width:64px;height:64px;transition:transform .25s ease}
+.meal-main:hover .thumb{transform:rotate(-6deg) scale(1.04)}
 .sheet .dish{background:var(--sage);margin:12px -28px 22px;padding:26px 0 18px;display:flex;justify-content:center;border-bottom:1px solid var(--rule)}
 .sheet .dish svg{width:min(240px,62vw);height:auto}
 
@@ -308,7 +308,7 @@ function renderPlan(){
     if(!r){body+=`<div class="meal"><span class="meal-when cap">${m}</span><span class="soft">No recipe fits your requirements</span><span></span></div>`;continue}
     const rn=recipeNutrition(r),p=d.portion||1;
     body+=`<div class="meal"><span class="meal-when cap">${m}</span>
-      <button class="meal-main" data-recipe="${r.id}"><span class="thumb" aria-hidden="true">${plateSVG(r,PLATE_THEME,56).replace('viewBox="0 0 200 200"','viewBox="16 16 168 168"')}</span><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
+      <button class="meal-main" data-recipe="${r.id}"><span class="thumb" aria-hidden="true">${plateSVG(r,PLATE_THEME,64)}</span><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
       <span class="meal-act"><button class="link" data-lock="${key}" aria-pressed="${lk}" aria-label="${lk?'Release':'Keep'} ${esc(r.name)} when re-planning">${lk?'Kept':'Keep'}</button><button class="link" data-swap="${key}" aria-label="Swap ${m}">Swap</button></span></div>`;
   }
   if(d.snacks&&d.snacks.length)body+=`<div class="snacks"><span class="meal-when cap" style="color:var(--oil)">Snacks</span><span>${d.snacks.map(x=>esc(recipeById(x).name)).join(' &nbsp;•&nbsp; ')}</span></div>`;

@@ -95,9 +95,9 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .meals{border-top:1px solid var(--rule);margin-top:20px}
 .meal{display:grid;grid-template-columns:110px 1fr auto;gap:16px;align-items:center;padding:18px 0;border-bottom:1px solid var(--hair)}
 .meal-when{color:var(--soft)}
-.meal-main{text-align:left;display:grid;grid-template-columns:56px 1fr;gap:4px 14px;align-items:center}
-.meal-main .thumb{grid-row:1/3;width:56px;height:56px;transition:transform .25s ease}
-.meal-main:hover .thumb{transform:rotate(-8deg)}
+.meal-main{text-align:left;display:grid;grid-template-columns:64px 1fr;gap:4px 14px;align-items:center}
+.meal-main .thumb{grid-row:1/3;width:64px;height:64px;transition:transform .25s ease}
+.meal-main:hover .thumb{transform:rotate(-6deg) scale(1.04)}
 .sheet .dish{background:var(--sage);margin:12px -28px 22px;padding:26px 0 18px;display:flex;justify-content:center;border-bottom:1px solid var(--rule)}
 .sheet .dish svg{width:min(240px,62vw);height:auto}
 
@@ -776,7 +776,7 @@ function validLocks(locked, settings) {
 function storeSearchUrl(store, item) { return STORES[store].search(item.search); }
 
 const { plateSVG, plateFor } = (() => {
-// Tafel dish illustrations: a stylised, top-down plate or bowl drawn from a recipe's real ingredients.
+// Tafel dish illustrations: a stylised bite of each recipe on a fork (or a spoonful), drawn from its real ingredients.
 // Returns plain shape data so the web (SVG strings) and the app (react-native-svg) can both draw it.
 // Coordinates are in a 200 x 200 box.
 
@@ -822,97 +822,105 @@ function scatter(rand, n, cx, cy, r, minD = 0) {
   return pts;
 }
 
+// A single bite: the dish's ingredients speared on a fork (or a spoonful for porridge, yoghurt and soup).
+// Drawn upright, then tilted by `rotate` degrees around the centre.
 function plateFor(recipe) {
   const rand = rng(recipe.id);
   const parts = Object.keys(recipe.ing).map(id => ({ id, m: MAP[id] })).filter(p => p.m);
   const has = role => parts.filter(p => p.m[0] === role);
-  if (recipe.meal === 'breakfast' && recipe.ing.maize_meal) parts.push({ id: '_porridge', m: MAP._porridge });
-  const bowl = recipe.meal === 'breakfast' && has('bowl').length > 0 || /soup/i.test(recipe.name);
-  const S = []; // shapes: {t, ...}
-  const C = 100, R = bowl ? 66 : 74;
-
-  // Dish
-  S.push({ t: 'circle', x: C, y: C + 3, r: R + 16, fill: 'shadow' });
-  S.push({ t: 'circle', x: C, y: C, r: R + 16, fill: 'dish' });
-  S.push({ t: 'circle', x: C, y: C, r: R + (bowl ? 4 : 9), fill: 'none', stroke: 'rim' });
-
   const soup = /soup/i.test(recipe.name);
-  const sauce = has('sauce')[0];
-  // Bowls fill with porridge/yoghurt/soup; plates get a bed of starch to one side.
-  if (bowl) {
-    const base = soup ? (recipe.ing.butternut ? PAL.squash : PAL.lentil) : PAL[(has('bowl')[0] || has('bed')[0] || { m: [0, 'oats'] }).m[1]];
-    S.push({ t: 'circle', x: C, y: C, r: R, fill: base, stroke: '#00000014' });
-    if (!soup && has('bowl').length > 1) S.push({ t: 'blob', x: C - 14, y: C + 8, r: R * 0.55, fill: PAL[has('bowl')[1].m[1]], rot: rand() * 360 });
-    if (soup) for (let i = 0; i < 3; i++) S.push({ t: 'arc', x: C, y: C, r: 18 + i * 14, fill: 'none', stroke: '#ffffff55' });
-  } else {
-    const bed = has('bed')[0];
-    if (sauce) S.push({ t: 'blob', x: C + R * 0.24, y: C - R * 0.04, r: R * 0.62, fill: PAL[sauce.m[1]], rot: rand() * 360 });
-    if (bed) {
-      const kind = bed.m[2];
-      const bx = C - R * 0.36, by = C + R * 0.06, br = R * 0.52;
-      if (kind === 'strand') {
-        S.push({ t: 'blob', x: bx + 12, y: by - 6, r: br * 1.05, fill: PAL.pasta, rot: 0 });
-        for (let i = 0; i < 14; i++) S.push({ t: 'curve', x: bx + 12 + (rand() - .5) * br * 1.4, y: by - 6 + (rand() - .5) * br * 1.4, r: 10 + rand() * 10, rot: rand() * 360, stroke: '#c9a44f' });
-      } else {
-        S.push({ t: 'blob', x: bx, y: by, r: br, fill: PAL[bed.m[1]], rot: rand() * 360, stroke: '#00000016' });
-        if (kind === 'grain') for (const p of scatter(rand, 40, bx, by, br * 0.8)) S.push({ t: 'grain', ...p, rot: rand() * 180, fill: '#ffffffd9' });
-        if (kind === 'mound') S.push({ t: 'curve', x: bx - 4, y: by - 4, r: br * 0.45, rot: 160, stroke: '#ffffff99' });
-        if (bed.id === 'potato' && recipe.ing.potato >= 900 && /chips|wedge/i.test(recipe.name)) S.pop();
+  if (recipe.meal === 'breakfast' && recipe.ing.maize_meal) parts.push({ id: '_porridge', m: MAP._porridge });
+  const spoon = soup || (recipe.meal === 'breakfast' && has('bowl').length > 0);
+  const S = [];
+  const X = 100;
+  S.push({ t: 'circle', x: 100, y: 100, r: 92, fill: 'dish', norot: true });
+
+  if (spoon) {
+    // Spoon: handle, neck and an oval bowl holding the food.
+    S.push({ t: 'rr', x: X - 6, y: 112, w: 12, h: 82, rx: 6, fill: 'metal', stroke: 'metalEdge' });
+    S.push({ t: 'ellipse', x: X, y: 70, rx: 38, ry: 48, fill: 'metal', stroke: 'metalEdge' });
+    S.push({ t: 'ellipse', x: X, y: 70, rx: 32, ry: 41, fill: 'metalDeep' });
+    const base = soup ? (recipe.ing.butternut ? PAL.squash : PAL.lentil) : PAL[(has('bowl')[0] || { m: [0, 'oats'] }).m[1]];
+    S.push({ t: 'ellipse', x: X, y: 72, rx: 30, ry: 37, fill: base, stroke: '#00000012' });
+    if (!soup && has('bowl').length > 1) S.push({ t: 'blob', x: X - 6, y: 80, r: 18, fill: PAL[has('bowl')[1].m[1]], rot: rand() * 360 });
+    if (soup) { S.push({ t: 'curve', x: X - 4, y: 64, r: 14, rot: 200, stroke: '#ffffff66' }); S.push({ t: 'circle', x: X + 8, y: 82, r: 3, fill: '#ffffff55' }); }
+    for (const v of [...has('veg'), ...has('main')].slice(0, 3)) {
+      const col = PAL[v.m[1]];
+      for (const q of scatter(rand, v.m[2] === 'coin' || v.m[2] === 'slice' ? 3 : 4, X + 2, 64, 18, 9)) {
+        if (v.m[2] === 'slice') S.push({ t: 'fillet', ...q, r: 10, rot: rand() * 360, fill: col, stroke: '#00000018' });
+        else if (v.m[2] === 'leaf') S.push({ t: 'leaf', ...q, r: 9, rot: rand() * 360, fill: col });
+        else S.push({ t: 'circle', ...q, r: v.m[2] === 'coin' ? 6 : 4.5, fill: col, stroke: '#00000018' });
       }
     }
+    for (const tp of has('top')) S.push(tp.m[2] === 'smear' ? { t: 'blob', x: X + 8, y: 58, r: 10, fill: PAL.pb, rot: 30 } : { t: 'curve', x: X, y: 60, r: 8, rot: 20, stroke: PAL.cheese });
+    S.push({ t: 'curve', x: X - 18, y: 44, r: 10, rot: 300, stroke: '#ffffff99' });
+    return { shapes: S, rotate: -32 };
   }
 
-  // Bread, wraps and toast sit on the side.
-  for (const side of has('side')) {
-    const n = recipe.ing[side.id] >= 4 ? 2 : 1;
-    for (let i = 0; i < n; i++) S.push(side.m[2] === 'half'
-      ? { t: 'half', x: C - R * 0.3 + i * 14, y: C - R * 0.2 + i * 18, r: 40, rot: -30 + i * 25, fill: PAL.wrap, stroke: '#cfae6f' }
-      : { t: 'toast', x: C - R * 0.3 + i * 16, y: C - R * 0.12 + i * 20, r: 34, rot: -18 + i * 22, fill: PAL.bread, stroke: PAL.crust });
-  }
-  // Chips: wedges instead of mash
-  if (/chips|wedge/i.test(recipe.name)) for (let i = 0; i < 11; i++) S.push({ t: 'wedge', x: C - R * 0.36 + (rand() - .5) * 46, y: C + R * 0.06 + (rand() - .5) * 46, r: 17, rot: rand() * 360, fill: '#e3b35c' });
+  // Fork: handle, neck, head and four tines.
+  S.push({ t: 'rr', x: X - 7, y: 118, w: 14, h: 76, rx: 7, fill: 'metal', stroke: 'metalEdge' });
+  S.push({ t: 'rr', x: X - 4, y: 96, w: 8, h: 30, rx: 4, fill: 'metal' });
+  S.push({ t: 'rr', x: X - 27, y: 78, w: 54, h: 24, rx: 12, fill: 'metal', stroke: 'metalEdge' });
+  for (let i = 0; i < 4; i++) S.push({ t: 'rr', x: X - 26 + i * 15, y: 16, w: 7, h: 72, rx: 3.5, fill: 'metal', stroke: 'metalEdge' });
 
-  // Main protein
+  // The bite sits on the tines, leaving the tips showing above it.
+  const by = 54;
+  const sauce = has('sauce')[0];
+  const bed = has('bed')[0];
   const main = has('main');
-  const sideOnly = has('bed').length === 0 && has('side').length > 0;
-  const mx = bowl ? C : C + R * 0.3, my = bowl ? C : C - R * (sideOnly ? 0.02 : 0.1), mr = bowl ? R * 0.55 : R * 0.46;
-  for (const [k, p] of main.entries()) {
-    const col = PAL[p.m[1]], shape = p.m[2];
-    const cx = mx + (k ? (rand() - .5) * 30 : 0), cy = my + (k ? 14 : 0);
-    if (shape === 'crumble') for (const q of scatter(rand, 30, cx, cy, mr * 0.9, 5)) S.push({ t: 'blob', ...q, r: 5.5 + rand() * 4.5, fill: col, rot: rand() * 360 });
-    else if (shape === 'piece' || shape === 'chunk' || shape === 'chop') for (const q of scatter(rand, shape === 'chop' ? 2 : 4, cx, cy, mr * 0.6, 22)) S.push({ t: 'blob', ...q, r: shape === 'chop' ? 26 : 16, fill: col, rot: rand() * 360, stroke: '#00000022' });
-    else if (shape === 'slice') for (let i = 0; i < 5; i++) S.push({ t: 'pill', x: cx - 24 + i * 12, y: cy + (i % 2) * 3, r: 19, rot: 70, fill: col, stroke: '#00000018' });
-    else if (shape === 'coil') S.push({ t: 'coil', x: cx, y: cy, r: mr * 0.75, fill: 'none', stroke: col });
-    else if (shape === 'fillet') for (let i = 0; i < (p.id === 'hake' ? 2 : 3); i++) S.push({ t: 'fillet', x: cx - 12 + i * 16, y: cy - 8 + i * 10, r: 28, rot: -25 + i * 10, fill: col, stroke: '#00000022' });
-    else if (shape === 'flake') for (const q of scatter(rand, 14, cx, cy, mr * 0.7, 8)) S.push({ t: 'blob', ...q, r: 8, fill: col, rot: rand() * 360 });
-    else if (shape === 'egg') for (const q of scatter(rand, Math.min(3, Math.ceil((recipe.ing.eggs || 2) / 3)), cx, cy, mr * 0.55, 30)) { S.push({ t: 'blob', ...q, r: 20, fill: PAL.egg, rot: rand() * 360, stroke: '#0000001c' }); S.push({ t: 'circle', x: q.x + 2, y: q.y + 1, r: 8, fill: PAL.yolk }); }
-    else for (const q of scatter(rand, shape === 'round' ? 16 : 34, cx, cy, mr * 0.85, shape === 'round' ? 8 : 4)) S.push({ t: 'circle', ...q, r: shape === 'round' ? 6 : 3.4, fill: col, stroke: '#00000018' });
-  }
-
-  // Vegetables and fruit around the main
-  for (const v of has('veg')) {
-    const col = PAL[v.m[1]], shape = v.m[2];
-    const n = { leaf: 6, floret: 5, coin: 6, round: 5, cube: 7, shred: 14, strip: 6, ring: 4, slice: 4, dot: 14 }[shape] || 5;
-    const vx = bowl ? C + 12 : C + R * 0.05, vy = bowl ? C - 18 : C + R * 0.5;
-    for (const q of scatter(rand, n, vx, vy, bowl ? R * 0.5 : R * 0.42, 10)) {
-      const rot = rand() * 360;
-      if (shape === 'leaf') S.push({ t: 'leaf', ...q, r: 14, rot, fill: col });
-      else if (shape === 'floret') S.push({ t: 'floret', ...q, r: 10, fill: col });
-      else if (shape === 'cube') S.push({ t: 'square', ...q, r: 7, rot, fill: col, stroke: '#00000018' });
-      else if (shape === 'shred') S.push({ t: 'curve', ...q, r: 11, rot, stroke: col });
-      else if (shape === 'strip') S.push({ t: 'pill', ...q, r: 12, rot, fill: col });
-      else if (shape === 'ring') S.push({ t: 'circle', ...q, r: 9, fill: 'none', stroke: col });
-      else if (shape === 'slice') S.push({ t: 'fillet', ...q, r: 15, rot, fill: col, stroke: '#00000018' });
-      else if (shape === 'round') { S.push({ t: 'circle', ...q, r: 8.5, fill: col, stroke: '#00000018' }); if (v.id === 'tomato') S.push({ t: 'circle', x: q.x - 2.5, y: q.y - 2.5, r: 2, fill: '#ffffff66' }); }
-      else S.push({ t: 'circle', ...q, r: shape === 'coin' ? 7 : 3.6, fill: col, stroke: '#00000018' });
+  const veg = has('veg');
+  if (bed) {
+    const k = bed.m[2];
+    if (k === 'strand') {
+      S.push({ t: 'blob', x: X, y: by + 6, r: 27, fill: PAL.pasta, stroke: '#c9a44f' });
+      for (let i = 0; i < 4; i++) S.push({ t: 'arc', x: X, y: by + 2 + i * 6, r: 22 - i * 2, stroke: '#c9a44f' });
+    } else {
+      S.push({ t: 'blob', x: X, y: by + 6, r: 27, fill: PAL[bed.m[1]], rot: rand() * 360, stroke: '#00000018' });
+      if (k === 'grain') for (const q of scatter(rand, 26, X, by + 6, 22)) S.push({ t: 'grain', ...q, rot: rand() * 180, fill: '#ffffffd9' });
+      if (k === 'mound') S.push({ t: 'curve', x: X - 6, y: by + 2, r: 12, rot: 160, stroke: '#ffffff99' });
     }
+  } else if (has('side')[0]) {
+    const side = has('side')[0];
+    S.push(side.m[2] === 'half'
+      ? { t: 'rr', x: X - 28, y: by - 8, w: 56, h: 34, rx: 17, fill: PAL.wrap, stroke: '#cfae6f' }
+      : { t: 'toast', x: X, y: by + 4, r: 26, rot: 0, fill: PAL.bread, stroke: PAL.crust });
+  } else if (/chips|wedge/i.test(recipe.name)) {
+    S.push({ t: 'wedge', x: X, y: by + 8, r: 24, rot: -8, fill: '#e3b35c', stroke: '#c48f3a' });
   }
-  // Toppings
-  for (const tp of has('top')) {
-    if (tp.m[2] === 'smear') S.push({ t: 'blob', x: C + 26, y: C - 26, r: 18, fill: PAL.pb, rot: rand() * 360 });
-    else for (const q of scatter(rand, 16, mx, my, mr * 0.8)) S.push({ t: 'curve', ...q, r: 6, rot: rand() * 360, stroke: PAL.cheese });
+  if (sauce) {
+    S.push({ t: 'blob', x: X + 3, y: by - 2, r: 22, fill: PAL[sauce.m[1]], rot: rand() * 360 });
+    S.push({ t: 'drop', x: X + 14, y: by + 36, r: 6, fill: PAL[sauce.m[1]] }); // a drip falling from the bite
   }
-  return { shapes: S, bowl };
+  // Main pieces on top, front and centre.
+  for (const [k, p] of main.slice(0, 2).entries()) {
+    const col = PAL[p.m[1]], sh = p.m[2], cx = X - 4 + k * 16, cy = by - 8 + k * 6;
+    if (sh === 'crumble') for (const q of scatter(rand, 12, cx, cy, 15, 5)) S.push({ t: 'blob', ...q, r: 5 + rand() * 3.5, fill: col, rot: rand() * 360 });
+    else if (sh === 'piece' || sh === 'chunk' || sh === 'chop' || sh === 'slice') S.push({ t: 'blob', x: cx, y: cy, r: 16, fill: col, rot: rand() * 360, stroke: '#00000022' });
+    else if (sh === 'coil') S.push({ t: 'pill', x: cx, y: cy, r: 22, rot: -10, fill: col, stroke: '#00000022' });
+    else if (sh === 'fillet') S.push({ t: 'fillet', x: cx, y: cy, r: 22, rot: -15, fill: col, stroke: '#00000022' });
+    else if (sh === 'flake') for (const q of scatter(rand, 5, cx, cy, 11, 7)) S.push({ t: 'blob', ...q, r: 7, fill: col, rot: rand() * 360 });
+    else if (sh === 'egg') { S.push({ t: 'blob', x: cx, y: cy, r: 16, fill: PAL.egg, rot: rand() * 360, stroke: '#0000001c' }); S.push({ t: 'circle', x: cx + 2, y: cy + 1, r: 6.5, fill: PAL.yolk }); }
+    else for (const q of scatter(rand, sh === 'round' ? 7 : 12, cx, cy, 14, sh === 'round' ? 7 : 4)) S.push({ t: 'circle', ...q, r: sh === 'round' ? 5 : 3.2, fill: col, stroke: '#00000018' });
+  }
+  // A couple of vegetable pieces tucked in.
+  for (const [k, v] of veg.slice(0, 3).entries()) {
+    const col = PAL[v.m[1]], sh = v.m[2];
+    const q = { x: X - 20 + k * 19 + (rand() - .5) * 6, y: by - 18 + (k % 2) * 30 + (rand() - .5) * 6 };
+    const rot = rand() * 360;
+    if (sh === 'leaf') S.push({ t: 'leaf', ...q, r: 12, rot, fill: col });
+    else if (sh === 'floret') S.push({ t: 'floret', ...q, r: 9, fill: col });
+    else if (sh === 'cube') S.push({ t: 'square', ...q, r: 6.5, rot, fill: col, stroke: '#00000018' });
+    else if (sh === 'shred') S.push({ t: 'curve', ...q, r: 10, rot, stroke: col });
+    else if (sh === 'strip') S.push({ t: 'pill', ...q, r: 10, rot, fill: col });
+    else if (sh === 'ring') S.push({ t: 'circle', ...q, r: 7, fill: 'none', stroke: col });
+    else if (sh === 'slice') S.push({ t: 'fillet', ...q, r: 12, rot, fill: col, stroke: '#00000018' });
+    else if (sh === 'dot') for (const d of scatter(rand, 4, q.x, q.y, 7, 5)) S.push({ t: 'circle', ...d, r: 3.4, fill: col, stroke: '#00000018' });
+    else { S.push({ t: 'circle', ...q, r: sh === 'coin' ? 6.5 : 7.5, fill: col, stroke: '#00000018' }); if (v.id === 'tomato') S.push({ t: 'circle', x: q.x - 2, y: q.y - 2, r: 1.8, fill: '#ffffff66' }); }
+  }
+  for (const tp of has('top')) S.push(tp.m[2] === 'smear' ? { t: 'blob', x: X, y: by - 4, r: 16, fill: PAL.pb, rot: 10 } : { t: 'curve', x: X + 2, y: by - 12, r: 9, rot: 15, stroke: PAL.cheese });
+  // Tine tips poke through the top of the bite.
+  for (let i = 0; i < 4; i++) S.push({ t: 'rr', x: X - 26 + i * 15, y: 16, w: 7, h: 14, rx: 3.5, fill: 'metal', stroke: 'metalEdge' });
+  return { shapes: S, rotate: -32 };
 }
 
 // Path helpers shared by renderers (all in plate coordinates).
@@ -930,6 +938,9 @@ function shapePath(s) {
       for (let i = 1; i <= n; i++) { const p = pts[i % n], m = mid(p, pts[(i + 1) % n]); d += ` Q${f(p[0])} ${f(p[1])} ${f(m[0])} ${f(m[1])}`; }
       return d + ' Z';
     }
+    case 'rr': { const { w, h, rx } = s; return `M${x + rx} ${y} H${x + w - rx} A${rx} ${rx} 0 0 1 ${x + w} ${y + rx} V${y + h - rx} A${rx} ${rx} 0 0 1 ${x + w - rx} ${y + h} H${x + rx} A${rx} ${rx} 0 0 1 ${x} ${y + h - rx} V${y + rx} A${rx} ${rx} 0 0 1 ${x + rx} ${y} Z`; }
+    case 'ellipse': { const { rx, ry } = s; return `M${x - rx} ${y} A${rx} ${ry} 0 1 0 ${x + rx} ${y} A${rx} ${ry} 0 1 0 ${x - rx} ${y} Z`; }
+    case 'drop': return `M${x} ${y - r * 2.2} C${x + r * 0.9} ${y - r * 0.6} ${x + r} ${y + r} ${x} ${y + r} C${x - r} ${y + r} ${x - r * 0.9} ${y - r * 0.6} ${x} ${y - r * 2.2} Z`;
     case 'grain': return P([rot(x - 3, y), rot(x, y - 1.2), rot(x + 3, y), rot(x, y + 1.2)]);
     case 'square': return P([rot(x - r, y - r), rot(x + r, y - r), rot(x + r, y + r), rot(x - r, y + r)]);
     case 'pill': return P([rot(x - r, y - r * 0.28), rot(x + r, y - r * 0.28), rot(x + r * 1.1, y), rot(x + r, y + r * 0.28), rot(x - r, y + r * 0.28), rot(x - r * 1.1, y)]);
@@ -948,12 +959,16 @@ function shapePath(s) {
 
 const STROKED = new Set(['curve', 'coil', 'arc']);
 const strokeOnly = s => STROKED.has(s.t) || s.fill === 'none';
-const strokeWidth = s => s.t === 'coil' ? 11 : s.t === 'curve' ? (s.stroke === '#c9a44f' ? 2.4 : 3.2) : s.t === 'arc' ? 1.5 : s.fill === 'none' && s.t === 'circle' && s.stroke !== 'rim' ? 2.4 : 1;
+const strokeWidth = s => s.t === 'coil' ? 11 : s.t === 'curve' ? (s.stroke === '#c9a44f' ? 2.4 : 3.2) : s.t === 'arc' ? (s.stroke === '#c9a44f' ? 2 : 1.5) : s.stroke === 'metalEdge' ? 1.2 : s.fill === 'none' && s.t === 'circle' && s.stroke !== 'rim' ? 2.4 : 1;
 
 // Web: an SVG string. theme = { dish, rim, shadow }
+// Close-up: centre the bite in the circle and let the handle run off the edge.
+const BITE = { x: 98, y: 90, scale: 1.55, focusY: 60 };
+const biteTransform = rotate => `translate(${BITE.x} ${BITE.y}) rotate(${rotate || 0}) scale(${BITE.scale}) translate(-100 -${BITE.focusY})`;
+const METAL = { metal: '#c3c7bd', metalEdge: '#8f948a', metalDeep: '#aeb3a8' };
 function plateSVG(recipe, theme, size = 200, label = '') {
-  const { shapes } = plateFor(recipe);
-  const col = v => v === 'dish' ? theme.dish : v === 'rim' ? theme.rim : v === 'shadow' ? theme.shadow : v;
+  const { shapes, rotate } = plateFor(recipe);
+  const col = v => v === 'dish' ? theme.dish : v === 'rim' ? theme.rim : v === 'shadow' ? theme.shadow : METAL[v] || v;
   const out = shapes.map(s => {
     const fill = strokeOnly(s) ? 'none' : col(s.fill);
     const stroke = s.stroke ? col(s.stroke) : 'none';
@@ -961,8 +976,11 @@ function plateSVG(recipe, theme, size = 200, label = '') {
     const extra = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`;
     if (s.t === 'circle') return `<circle cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="${s.r}" ${extra}/>`;
     return `<path d="${shapePath(s)}" ${extra}/>`;
-  }).join('');
-  return `<svg viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="${label || 'Illustration of ' + recipe.name}">${out}</svg>`;
+  });
+  const bg = shapes.findIndex(s => s.norot);
+  const back = bg >= 0 ? out[bg] : '', front = out.filter((_, i) => i !== bg).join('');
+  const clip = 'tc-' + recipe.id + '-' + size;
+  return `<svg viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="${label || 'Illustration of ' + recipe.name}"><defs><clipPath id="${clip}"><circle cx="100" cy="100" r="92"/></clipPath></defs>${back}<g clip-path="url(#${clip})"><g transform="${biteTransform(rotate)}">${front}</g></g></svg>`;
 }
 
 return { plateSVG, plateFor };
@@ -1054,7 +1072,7 @@ function renderPlan(){
     if(!r){body+=`<div class="meal"><span class="meal-when cap">${m}</span><span class="soft">No recipe fits your requirements</span><span></span></div>`;continue}
     const rn=recipeNutrition(r),p=d.portion||1;
     body+=`<div class="meal"><span class="meal-when cap">${m}</span>
-      <button class="meal-main" data-recipe="${r.id}"><span class="thumb" aria-hidden="true">${plateSVG(r,PLATE_THEME,56).replace('viewBox="0 0 200 200"','viewBox="16 16 168 168"')}</span><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
+      <button class="meal-main" data-recipe="${r.id}"><span class="thumb" aria-hidden="true">${plateSVG(r,PLATE_THEME,64)}</span><span class="meal-name">${esc(r.name)}</span><span class="meal-meta">${r.mins} min &nbsp;•&nbsp; ${Math.round(rn.protein*p)} g protein${p!==1?` &nbsp;•&nbsp; <span class="portion">Your portion ×${p}</span>`:''}</span></button>
       <span class="meal-act"><button class="link" data-lock="${key}" aria-pressed="${lk}" aria-label="${lk?'Release':'Keep'} ${esc(r.name)} when re-planning">${lk?'Kept':'Keep'}</button><button class="link" data-swap="${key}" aria-label="Swap ${m}">Swap</button></span></div>`;
   }
   if(d.snacks&&d.snacks.length)body+=`<div class="snacks"><span class="meal-when cap" style="color:var(--oil)">Snacks</span><span>${d.snacks.map(x=>esc(recipeById(x).name)).join(' &nbsp;•&nbsp; ')}</span></div>`;

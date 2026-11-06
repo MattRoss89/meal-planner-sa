@@ -155,7 +155,7 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
           {narrow && when}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {!narrow && when}
-            {r && <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: r.id })} accessibilityLabel={`Open recipe: ${r.name}`}><Plate recipe={r} size={52} theme={t} zoom /></TouchableOpacity>}
+            {r && <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: r.id })} accessibilityLabel={`Open recipe: ${r.name}`}><Plate recipe={r} size={60} theme={t} /></TouchableOpacity>}
             <TouchableOpacity style={{ flex: 1, gap: 3 }} disabled={!r} onPress={() => openSheet({ type: 'recipe', id: r.id })}>
               {r ? <H size={19}>{r.name}</H> : <T muted>No recipe fits your requirements</T>}
               {r && <T muted size={13.5}>{r.mins} min  •  {Math.round(rn.protein * p)} g protein{p !== 1 ? <T size={13.5} color={t.train}>  •  Your portion ×{p}</T> : null}</T>}
