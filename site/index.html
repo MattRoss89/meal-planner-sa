@@ -14,7 +14,7 @@
    Display: Bodoni Moda at high optical size. Text: Hanken Grotesk. Structure from hairlines and asymmetry, never cards. */
 :root{
   --paper:#fbf9f3; --ink:#3f4534; --soft:#666a5b; --hair:#dcd9cd; --rule:#3f4534;
-  --sage:#dfe7d2; --sage-ink:#353c2b; --oil:#8a6120; --band:#2e3326; --band-ink:#eeebe1; --band-soft:#b9bcab;
+  --sage:#dfe7d2; --sage-ink:#353c2b; --oil:#8a6120; --band:#2e3326; --band-ink:#eeebe1; --band-soft:#c3c6b6; --band-oil:#e2b766;
   --serif:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
   --sans:"Hanken Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
   --gut:clamp(20px,5vw,64px); --max:1240px;
@@ -22,10 +22,10 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#1b1e18; --ink:#ebe8dd; --soft:#a9ab9c; --hair:#33382d; --rule:#ebe8dd;
-  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#5a5e50; color-scheme:dark}}
+  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#4f5346; --band-oil:#7a5418; color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#1b1e18; --ink:#ebe8dd; --soft:#a9ab9c; --hair:#33382d; --rule:#ebe8dd;
-  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#5a5e50; color-scheme:dark}
+  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#4f5346; --band-oil:#7a5418; color-scheme:dark}
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -34,7 +34,8 @@ a{color:inherit}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
 :focus-visible{outline:1px solid currentColor;outline-offset:4px}
-h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;text-wrap:balance;letter-spacing:-.015em;font-optical-sizing:auto}
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;text-wrap:balance;letter-spacing:-.01em;font-optical-sizing:none;font-variation-settings:"opsz" 18}
+.huge,.lb-total b,.budget-v,.hero .facts b,.steps .n,.ticker span{font-optical-sizing:none;font-variation-settings:"opsz" 18}
 p{margin:0}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
 .cap{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase}
@@ -139,18 +140,19 @@ section{padding:clamp(72px,10vw,140px) 0}
 /* Training band */
 .band{background:var(--band);color:var(--band-ink)}
 .band .soft{color:var(--band-soft)}
-.band h2{font-size:clamp(40px,5.6vw,80px);line-height:1;max-width:14ch}
+.band .kicker::before{background:var(--band-oil)}
+.band h2{font-size:clamp(40px,5.6vw,76px);line-height:1.04;max-width:14ch;font-weight:500}
 .band-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,6vw,96px);align-items:end}
 .band-top p{font-size:17px;max-width:42ch}
 .week{display:grid;grid-template-columns:repeat(7,1fr);margin-top:64px;border-top:1px solid currentColor}
 .wd{padding:18px 12px 20px;border-right:1px solid color-mix(in srgb,currentColor 25%,transparent);display:grid;gap:6px;align-content:start;min-height:190px}
 .wd:last-child{border-right:0}
 .wd .act{font-size:13.5px;min-height:2.6em}
-.wd .act.on{color:var(--oil)}
-.wd .k{font:400 clamp(22px,2.4vw,32px)/1 var(--serif);margin-top:auto}
-.wd .kl{font-size:12px}
+.wd .act.on{color:var(--band-oil);font-weight:500}
+.wd .k{font:500 clamp(24px,2.4vw,32px)/1 var(--serif);font-variation-settings:"opsz" 18;margin-top:auto}
+.wd .kl{font-size:12.5px}
 .band-foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:28px;padding-top:18px;border-top:1px solid color-mix(in srgb,currentColor 25%,transparent)}
-.band-foot b{font:400 32px var(--serif);display:block}
+.band-foot b{font:500 34px var(--serif);font-variation-settings:"opsz" 18;display:block}
 @media (max-width:900px){.band-top{grid-template-columns:1fr}.week{grid-template-columns:repeat(7,minmax(92px,1fr));overflow-x:auto}.wd{min-height:160px}}
 
 /* Diets */
