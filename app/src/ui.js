@@ -98,7 +98,8 @@ export function Section({ title, lead, children, style }) {
   </View>;
 }
 export function Field({ label, children, style }) {
-  return <View style={[{ gap: 8, flex: 1, minWidth: 140 }, style]}><T muted size={11} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{label}</T>{children}</View>;
+  // flexGrow with an auto basis: shares width in a row, but keeps its natural height when stacked.
+  return <View style={[{ gap: 8, flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 140 }, style]}><T muted size={11} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{label}</T>{children}</View>;
 }
 
 export function NumInput({ value, onChange, placeholder, prefix, align }) {
