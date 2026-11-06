@@ -1,0 +1,36 @@
+name: Refresh lockfiles
+
+# Run by hand (Actions tab, Run workflow). Pins the app to Expo SDK 54 versions,
+# regenerates package-lock.json for the app and functions, and pushes them to the branch chore/lockfiles.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pin and lock the app
+        working-directory: app
+        run: |
+          mkdir -p /tmp/expo-sdk && (cd /tmp/expo-sdk && npm init -y >/dev/null && npm install --no-audit --no-fund --ignore-scripts --legacy-peer-deps expo@~54.0.0 >/dev/null)
+          node scripts/align-deps.mjs /tmp/expo-sdk/node_modules/expo
+          rm -f package-lock.json
+          npm install --no-audit --no-fund --legacy-peer-deps --package-lock-only
+      - name: Lock the functions
+        working-directory: functions
+        run: npm install --no-audit --no-fund --package-lock-only
+      - name: Push to chore/lockfiles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B chore/lockfiles
+          git add app/package.json app/package-lock.json functions/package-lock.json
+          git commit -m "Pin app packages to Expo SDK 54 and add lockfiles" || echo "No changes"
+          git push -f origin chore/lockfiles

@@ -1,0 +1,104 @@
+name: CI / CD
+
+# Every push and pull request: run the tests, then build.
+# Pull requests: deploy to a temporary preview link (posted as a comment, expires after 7 days).
+# main: deploy to the live site, only after tests and build pass.
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  build:
+    name: Build web app
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install app packages
+        working-directory: app
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund --legacy-peer-deps
+          else
+            # No lockfile yet: pin everything to the Expo SDK 54 versions, then install.
+            mkdir -p /tmp/expo-sdk && (cd /tmp/expo-sdk && npm init -y >/dev/null && npm install --no-audit --no-fund --ignore-scripts --legacy-peer-deps expo@~54.0.0 >/dev/null)
+            node scripts/align-deps.mjs /tmp/expo-sdk/node_modules/expo
+            npm install --no-audit --no-fund --legacy-peer-deps
+          fi
+      - name: Build legal pages
+        run: node legal/build.mjs
+      - name: Build web
+        working-directory: app
+        run: |
+          npx expo export -p web
+          # Firebase Hosting never uploads folders named node_modules, so move bundled assets (fonts) out of it.
+          if [ -d dist/assets/node_modules ]; then
+            mv dist/assets/node_modules dist/assets/vendor
+            grep -rl "assets/node_modules" dist | xargs -r sed -i 's#assets/node_modules#assets/vendor#g'
+          fi
+          test -f dist/index.html && test -f dist/privacy.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: app/dist
+          retention-days: 7
+
+  deploy:
+    name: ${{ github.event_name == 'pull_request' && 'Deploy preview' || 'Deploy live' }}
+    needs: build
+    runs-on: ubuntu-latest
+    # Forks don't get secrets, so only deploy for branches in this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: app/dist
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          channelId: ${{ github.event_name == 'pull_request' && '' || 'live' }}
+          expires: 7d
+          entryPoint: .
+      # Billing (Cloud Functions + database rules), live only. Turned on by the repo variable DEPLOY_BILLING=true
+      # once the Paystack secret is in Secret Manager and the plan code is in PAYSTACK_PLAN_CODE.
+      - name: Deploy billing functions and database rules
+        if: github.event_name != 'pull_request' && vars.DEPLOY_BILLING == 'true'
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PLAN_CODE: ${{ vars.PAYSTACK_PLAN_CODE }}
+        run: |
+          echo "$SA_JSON" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          printf 'PAYSTACK_PLAN_CODE=%s\nAPP_URL=https://meal-planner-sa.web.app\n' "$PLAN_CODE" > functions/.env
+          (cd functions && if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi)
+          npx --yes firebase-tools@14 deploy --only functions,firestore:rules --project meal-planner-sa --non-interactive --force
+          rm -f /tmp/sa.json

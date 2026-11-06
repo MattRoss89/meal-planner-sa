@@ -7,7 +7,7 @@ const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https')
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
-const crypto = require('node:crypto');
+const { newTrial, verifySignature, patchFor, uidFromMetadata } = require('./lib');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -16,8 +16,6 @@ setGlobalOptions({ region: 'africa-south1', maxInstances: 5 });
 const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
 const PAYSTACK_PLAN_CODE = defineString('PAYSTACK_PLAN_CODE');
 const APP_URL = defineString('APP_URL', { default: 'https://meal-planner-sa.web.app' });
-
-const TRIAL_DAYS = 30;
 
 async function paystack(path, { method = 'GET', body } = {}) {
   const res = await fetch('https://api.paystack.co' + path, {
@@ -41,8 +39,7 @@ exports.startTrial = onCall(async (req) => {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (snap.exists) return snap.data();
-    const now = Date.now();
-    const data = { email: token.email || null, trialStartedAt: now, trialEndsAt: now + TRIAL_DAYS * 864e5, subscription: null };
+    const data = newTrial(token.email);
     tx.set(ref, data);
     return data;
   });
@@ -76,8 +73,8 @@ exports.manageSubscription = onCall({ secrets: [PAYSTACK_SECRET_KEY] }, async (r
 });
 
 async function uidFor(event) {
-  const meta = event.data?.metadata;
-  if (meta && typeof meta === 'object' && meta.uid) return meta.uid;
+  const fromMeta = uidFromMetadata(event);
+  if (fromMeta) return fromMeta;
   const email = event.data?.customer?.email;
   if (!email) return null;
   const q = await db.collection('accounts').where('email', '==', email).limit(1).get();
@@ -86,45 +83,18 @@ async function uidFor(event) {
 
 exports.paystackWebhook = onRequest({ secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
-  const signature = req.get('x-paystack-signature') || '';
-  const expected = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY.value()).update(req.rawBody).digest('hex');
-  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  if (!verifySignature(req.rawBody, req.get('x-paystack-signature') || '', PAYSTACK_SECRET_KEY.value())) {
     return res.status(401).send('Bad signature');
   }
   const event = req.body || {};
   try {
+    const patch = patchFor(event);
+    if (!patch) return res.status(200).send('Ignored');
     const uid = await uidFor(event);
     if (!uid) return res.status(200).send('No matching user');
     const ref = db.doc(`accounts/${uid}`);
-    const d = event.data || {};
-    const patch = {};
-    switch (event.event) {
-      case 'subscription.create':
-        patch.subscription = {
-          status: 'active', code: d.subscription_code, customer: d.customer?.customer_code || null,
-          nextPaymentAt: d.next_payment_date ? Date.parse(d.next_payment_date) : null, updatedAt: Date.now(),
-        };
-        break;
-      case 'charge.success':
-      case 'invoice.update':
-        patch['subscription.status'] = 'active';
-        patch['subscription.lastPaidAt'] = Date.now();
-        if (d.subscription?.next_payment_date) patch['subscription.nextPaymentAt'] = Date.parse(d.subscription.next_payment_date);
-        break;
-      case 'invoice.payment_failed':
-        patch['subscription.status'] = 'past_due';
-        break;
-      case 'subscription.not_renew':
-        patch['subscription.status'] = 'cancelling'; // stays usable until the paid month ends
-        break;
-      case 'subscription.disable':
-        patch['subscription.status'] = 'cancelled';
-        break;
-      default:
-        return res.status(200).send('Ignored');
-    }
-    if (patch.subscription) await ref.set({ subscription: patch.subscription }, { merge: true });
-    else if ((await ref.get()).data()?.subscription) await ref.update({ ...patch, 'subscription.updatedAt': Date.now() });
+    if (patch.set) await ref.set(patch.set, { merge: true });
+    else if ((await ref.get()).data()?.subscription) await ref.update(patch.update);
     return res.status(200).send('OK');
   } catch (e) {
     console.error('webhook error', e);

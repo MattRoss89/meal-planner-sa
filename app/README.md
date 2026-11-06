@@ -86,3 +86,11 @@ One-time setup:
 
 ## Legal pages
 `legal/details.json` holds the public contact details. Fill in the TODO values; the pages (`/privacy.html`, `/terms.html`, `/paia.html`) rebuild on every deploy.
+
+## Testing and deployment
+- `npm test` at the repo root runs the unit tests (Node's built-in test runner, no installs needed).
+- `npm run sync` copies `shared/*.js` into `app/src/` (a test fails if they drift apart).
+- **CI / CD** (`.github/workflows/ci-cd.yml`): every push and pull request runs the tests, then builds the web app. Pull requests deploy to a temporary Firebase preview link, posted as a comment. Pushes to `main` deploy live, and only after the tests and build pass.
+- **Lockfiles:** run the *Refresh lockfiles* workflow from the Actions tab and merge the `chore/lockfiles` branch. Builds then use `npm ci` for repeatable installs.
+- **Dependabot** opens weekly update PRs (Expo and React Native packages are excluded; update those together with `npx expo install --fix`).
+- **Working on changes:** make a branch, open a pull request, check the preview link and the green checks, then merge.

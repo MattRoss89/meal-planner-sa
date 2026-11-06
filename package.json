@@ -1,0 +1,12 @@
+{
+  "name": "tafel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "sync": "cp shared/core.js shared/plate.js shared/billing.js app/src/",
+    "build:legal": "node legal/build.mjs",
+    "build:preview": "node web/build.mjs && node site/build.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -78,8 +78,7 @@ export async function loadPriceFeed() {
 }
 
 // ---------- Trial and subscription ----------
-export const TRIAL_DAYS = 30;
-export const PRICE = 'R20';
+export { TRIAL_DAYS, PRICE, entitlement } from './billing';
 export const APP_URL = 'https://meal-planner-sa.web.app';
 
 const call = name => async data => (await httpsCallable(fns, name)(data)).data;
@@ -91,16 +90,4 @@ export const manageSubscription = () => call('manageSubscription')();
 export function watchAccount(user, cb) {
   if (!db || !user) { cb(null); return () => {}; }
   return onSnapshot(doc(db, 'accounts', user.uid), s => cb(s.exists() ? s.data() : null), () => cb(null));
-}
-
-// What this account can do right now.
-export function entitlement(acct, now = Date.now()) {
-  if (!acct) return { ok: false, kind: 'unknown' };
-  const sub = acct.subscription;
-  const day = 864e5;
-  if (sub?.status === 'active') return { ok: true, kind: 'subscribed', until: sub.nextPaymentAt };
-  if (sub?.status === 'cancelling' && (sub.nextPaymentAt || 0) > now) return { ok: true, kind: 'cancelling', until: sub.nextPaymentAt };
-  if (sub?.status === 'past_due' && (sub.nextPaymentAt || 0) + 3 * day > now) return { ok: true, kind: 'past_due', until: sub.nextPaymentAt };
-  if ((acct.trialEndsAt || 0) > now) return { ok: true, kind: 'trial', until: acct.trialEndsAt, daysLeft: Math.ceil((acct.trialEndsAt - now) / day) };
-  return { ok: false, kind: sub ? 'lapsed' : 'trial_over' };
 }
