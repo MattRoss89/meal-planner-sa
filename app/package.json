@@ -34,6 +34,6 @@
     "react-native-web": "*"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0"
+    "@babel/core": "^8.1.0"
   }
 }
