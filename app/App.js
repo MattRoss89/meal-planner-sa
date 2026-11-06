@@ -493,11 +493,14 @@ function Main() {
 }
 
 export default function App() {
-  const [loaded] = useFonts({
+  const [loaded, fontError] = useFonts({
     BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
     Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold,
     IBMPlexMono_400Regular, IBMPlexMono_600SemiBold,
   });
-  if (!loaded) return null;
+  const [waited, setWaited] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setWaited(true), 3000); return () => clearTimeout(id); }, []);
+  // Never block the app on fonts: fall back to system fonts on error or after 3 s.
+  if (!loaded && !fontError && !waited) return null;
   return <SafeAreaProvider><Main /></SafeAreaProvider>;
 }
