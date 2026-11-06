@@ -1,0 +1,35 @@
+{
+  "name": "meal-planner-sa",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "build:web": "expo export -p web",
+    "deploy:web": "expo export -p web && firebase deploy --only hosting,firestore:rules",
+    "sync-core": "node -e \"require('fs').copyFileSync('../shared/core.js','src/core.js')\""
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "*",
+    "@react-native-async-storage/async-storage": "*",
+    "expo": "^54.0.0",
+    "expo-auth-session": "*",
+    "expo-clipboard": "*",
+    "expo-crypto": "*",
+    "expo-dev-client": "*",
+    "expo-status-bar": "*",
+    "expo-web-browser": "*",
+    "firebase": "^11.0.0",
+    "react": "*",
+    "react-dom": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": "*",
+    "react-native-web": "*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  }
+}

@@ -1,0 +1,225 @@
+{
+  "updatedAt": "2026-11-06T10:37:55.466Z",
+  "source": "Built-in estimates (Checkers), Nov 2026",
+  "storeIndex": {
+    "shoprite": 0.97,
+    "checkers": 1,
+    "pnp": 1.04,
+    "spar": 1.06,
+    "woolworths": 1.3
+  },
+  "items": {
+    "onion": {
+      "price": 22.99,
+      "pack": 1000
+    },
+    "tomato": {
+      "price": 29.99,
+      "pack": 1000
+    },
+    "potato": {
+      "price": 39.99,
+      "pack": 2000
+    },
+    "sweet_potato": {
+      "price": 29.99,
+      "pack": 1000
+    },
+    "carrot": {
+      "price": 19.99,
+      "pack": 1000
+    },
+    "cabbage": {
+      "price": 19.99,
+      "pack": 1
+    },
+    "spinach": {
+      "price": 22.99,
+      "pack": 250
+    },
+    "butternut": {
+      "price": 24.99,
+      "pack": 1
+    },
+    "green_pepper": {
+      "price": 24.99,
+      "pack": 3
+    },
+    "garlic": {
+      "price": 9.99,
+      "pack": 1
+    },
+    "banana": {
+      "price": 24.99,
+      "pack": 7
+    },
+    "apple": {
+      "price": 29.99,
+      "pack": 10
+    },
+    "avocado": {
+      "price": 39.99,
+      "pack": 4
+    },
+    "mushrooms": {
+      "price": 27.99,
+      "pack": 250
+    },
+    "broccoli": {
+      "price": 24.99,
+      "pack": 1
+    },
+    "chicken_pieces": {
+      "price": 109.99,
+      "pack": 2000
+    },
+    "chicken_breast": {
+      "price": 99.99,
+      "pack": 1000
+    },
+    "mince": {
+      "price": 119.99,
+      "pack": 1000
+    },
+    "boerewors": {
+      "price": 109.99,
+      "pack": 1000
+    },
+    "beef_stew": {
+      "price": 129.99,
+      "pack": 1000
+    },
+    "pork_chops": {
+      "price": 99.99,
+      "pack": 1000
+    },
+    "hake": {
+      "price": 109.99,
+      "pack": 1000
+    },
+    "tuna": {
+      "price": 24.99,
+      "pack": 1
+    },
+    "pilchards": {
+      "price": 27.99,
+      "pack": 1
+    },
+    "eggs": {
+      "price": 64.99,
+      "pack": 18
+    },
+    "milk": {
+      "price": 34.99,
+      "pack": 2000
+    },
+    "cheese": {
+      "price": 59.99,
+      "pack": 400
+    },
+    "butter": {
+      "price": 69.99,
+      "pack": 500
+    },
+    "yoghurt": {
+      "price": 39.99,
+      "pack": 1000
+    },
+    "bread": {
+      "price": 19.99,
+      "pack": 20
+    },
+    "wraps": {
+      "price": 34.99,
+      "pack": 6
+    },
+    "rice": {
+      "price": 44.99,
+      "pack": 2000
+    },
+    "maize_meal": {
+      "price": 39.99,
+      "pack": 2500
+    },
+    "pasta": {
+      "price": 19.99,
+      "pack": 500
+    },
+    "oats": {
+      "price": 34.99,
+      "pack": 1000
+    },
+    "samp": {
+      "price": 24.99,
+      "pack": 1000
+    },
+    "lentils": {
+      "price": 26.99,
+      "pack": 500
+    },
+    "soya": {
+      "price": 24.99,
+      "pack": 400
+    },
+    "baked_beans": {
+      "price": 16.99,
+      "pack": 1
+    },
+    "chakalaka": {
+      "price": 19.99,
+      "pack": 1
+    },
+    "chickpeas": {
+      "price": 19.99,
+      "pack": 1
+    },
+    "tomato_can": {
+      "price": 14.99,
+      "pack": 1
+    },
+    "coconut_milk": {
+      "price": 24.99,
+      "pack": 1
+    },
+    "peanut_butter": {
+      "price": 39.99,
+      "pack": 400
+    },
+    "frozen_veg": {
+      "price": 39.99,
+      "pack": 1000
+    },
+    "frozen_peas": {
+      "price": 34.99,
+      "pack": 1000
+    },
+    "mayo": {
+      "price": 44.99,
+      "pack": 750
+    },
+    "oil": {
+      "price": 64.99,
+      "pack": 2000
+    },
+    "flour": {
+      "price": 39.99,
+      "pack": 2500
+    },
+    "stock": {
+      "price": 19.99,
+      "pack": 12
+    },
+    "curry": {
+      "price": 24.99,
+      "pack": 100
+    },
+    "soy_sauce": {
+      "price": 24.99,
+      "pack": 250
+    },
+    "peri": {
+      "price": 34.99,
+      "pack": 250
+    }
+  }
+}

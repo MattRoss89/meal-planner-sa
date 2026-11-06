@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Meal Planner SA",
+    "slug": "meal-planner-sa",
+    "scheme": "mealplannersa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "za.mealplanner.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "za.mealplanner.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Meal Planner SA",
+      "themeColor": "#1f7a4d"
+    },
+    "plugins": ["expo-web-browser"]
+  }
+}
