@@ -442,7 +442,7 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
     <TouchableOpacity activeOpacity={1} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(10,18,14,0.45)', justifyContent: wide ? 'center' : 'flex-end', alignItems: 'center' }}>
       <TouchableOpacity activeOpacity={1} style={{ backgroundColor: t.surface, width: '100%', maxWidth: 560, maxHeight: wide ? '80%' : '86%', borderRadius: 0, borderBottomLeftRadius: wide ? 24 : 0, borderBottomRightRadius: wide ? 24 : 0, padding: 20, paddingTop: wide ? 22 : 10 }}>
         {!wide && <View style={{ width: 40, height: 4, borderRadius: 0, backgroundColor: t.line, alignSelf: 'center', marginBottom: 14 }} />}
-        <ScrollView>{body}</ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>{body}</ScrollView>
         <Btn title="Close" onPress={close} style={{ marginTop: 14, alignSelf: 'flex-start' }} />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -527,6 +527,14 @@ function TabBar({ tab, setTab, wide }) {
 function Main() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? DARK : LIGHT;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    let el = document.getElementById('tafel-scrollbars');
+    if (!el) { el = document.createElement('style'); el.id = 'tafel-scrollbars'; document.head.appendChild(el); }
+    el.textContent = `*{scrollbar-width:thin;scrollbar-color:${theme.line} transparent}
+      *::-webkit-scrollbar{width:6px;height:6px}*::-webkit-scrollbar-track{background:transparent}
+      *::-webkit-scrollbar-thumb{background:${theme.line};border-radius:3px}*::-webkit-scrollbar-thumb:hover{background:${theme.muted}}`;
+  }, [theme]);
   const { width } = useWindowDimensions();
   const wide = width >= 820, narrow = width < 560;
   const [user, setUser] = useState(undefined);
