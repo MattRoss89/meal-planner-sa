@@ -162,6 +162,10 @@ select option:checked{background:var(--sage);color:var(--sage-ink)}
 .stepper{display:flex;align-items:center;border-bottom:1px solid var(--ink)}
 .stepper button{width:36px;height:40px;font-size:20px;color:var(--soft)}
 .stepper output{flex:1;text-align:center;font-size:17px}
+.kids{border-top:1px solid var(--hair)}
+.kid{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 0;border-bottom:1px solid var(--hair)}
+.kid small{display:block;color:var(--soft);font-size:12.5px}
+.kid .stepper{width:150px;border-bottom:0}
 .opts{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--hair);border-left:1px solid var(--hair)}
 .opt{padding:10px 14px;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);font-size:14px}
 .opt[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink)}
@@ -421,8 +425,31 @@ function cycleWeek(cycle, weekStart) {
 }
 const CYCLE_LABELS = { period: 'Period', recovery: 'After period', luteal: 'Before period', mid: '' };
 
+// Children eat smaller portions; factors are shares of an adult portion.
+const KID_GROUPS = {
+  toddler: { label: 'Ages 1–3', factor: 0.4 },
+  child:   { label: 'Ages 4–8', factor: 0.6 },
+  preteen: { label: 'Ages 9–13', factor: 0.8 },
+  teen:    { label: 'Ages 14–17', factor: 1.0 },
+};
+// Recipes most children happily eat (mild, familiar).
+const KID_FRIENDLY = new Set(['b_oats_banana','b_eggs_toast','b_maize_porridge','b_yog_oats','b_pb_toast','b_vegan_oats','b_fruit_yog','b_eggs_avo',
+  'l_tuna_wraps','l_chicken_sarmie','l_egg_wraps','l_quesadilla','l_pilchards_toast','l_butternut_soup','l_chakalaka_bread',
+  'd_bolognese','d_wors_pap','d_hake_chips','d_fishcakes','d_cottage_pie','d_soya_bolognese','d_pork_mash','d_mushroom_pasta','d_stirfry','d_egg_fried_rice','d_tuna_bake','d_roast_chicken_veg','d_garlic_chicken','d_samp_beans']);
+
+function kidCount(s) { return Object.values((s && s.kids) || {}).reduce((a, n) => a + (Number(n) || 0), 0); }
+// Adult-portion equivalents for the whole household.
+function eaters(s) {
+  return (Number(s.householdSize) || 1) + Object.entries(s.kids || {}).reduce((a, [g, n]) => a + (Number(n) || 0) * ((KID_GROUPS[g] || {}).factor || 0), 0);
+}
+function householdLabel(s) {
+  const a = Number(s.householdSize) || 1, k = kidCount(s);
+  return `${a} ${a === 1 ? 'adult' : 'adults'}${k ? `, ${k} ${k === 1 ? 'child' : 'children'}` : ''}`;
+}
+
 const DEFAULT_SETTINGS = {
-  householdSize: 2,
+  householdSize: 2, // adults (and teens counted as adults if preferred)
+  kids: { toddler: 0, child: 0, preteen: 0, teen: 0 },
   weeklyBudget: 1200,
   store: 'checkers',
   diets: [],
@@ -446,6 +473,7 @@ function mergeSettings(s) {
   return {
     ...d, ...s,
     meals: { ...d.meals, ...(s.meals || {}) },
+    kids: { ...d.kids, ...(s.kids || {}) },
     fitness: { ...d.fitness, ...(s.fitness || {}), week: (s.fitness && Array.isArray(s.fitness.week) && s.fitness.week.length === 7) ? s.fitness.week : d.fitness.week },
     diets: Array.isArray(s.diets) ? s.diets : [],
     prefs: Array.isArray(s.prefs) ? s.prefs : [],
@@ -511,8 +539,8 @@ function buildList(plan, settings, priceFeed, overrides) {
   const need = {};
   const add = (id, q) => { need[id] = (need[id] || 0) + q; };
   for (const day of plan.days) {
-    // The fitness person eats `portion` servings; everyone else 1 serving.
-    const scale = (s.householdSize - 1 + (day.portion || 1)) / 4;
+    // The fitness person eats `portion` servings; everyone else a standard serving (children less).
+    const scale = (eaters(s) - 1 + (day.portion || 1)) / 4;
     for (const slot of ['breakfast', 'lunch', 'dinner']) {
       const r = day[slot] && recipeById(day[slot]);
       if (r) for (const [id, q] of Object.entries(r.ing)) add(id, q * scale);
@@ -611,6 +639,7 @@ function evaluate(plan, settings, priceFeed, overrides, targets, opts) {
   const counts = {};
   for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl]) counts[d[sl]] = (counts[d[sl]] || 0) + 1;
   for (const c of Object.values(counts)) score -= (c - 1) * (c - 1) * 30; // repeats
+  if (kidCount(settings) > 0) for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl] && KID_FRIENDLY.has(d[sl])) score += 25;
   // Reward a mix of chicken / red meat / fish / meat-free dinners (within the diet).
   const kinds = new Set(plan.days.map(d => {
     const r = d.dinner && recipeById(d.dinner); if (!r) return null;
@@ -721,6 +750,24 @@ function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
   return trial;
 }
 
+// What feeds the planner (store choice excluded: it only changes prices, not meals).
+function planInputsKey(settings, overrides) {
+  const { store, ...rest } = mergeSettings(settings);
+  return JSON.stringify([rest, overrides || {}]);
+}
+
+// Kept meals that still fit the current settings.
+function validLocks(locked, settings) {
+  const s = mergeSettings(settings);
+  const out = {};
+  for (const [k, id] of Object.entries(locked || {})) {
+    const [, slot] = k.split(':');
+    const r = recipeById(id);
+    if (r && s.meals[slot] && allowedRecipe(r, s.diets)) out[k] = id;
+  }
+  return out;
+}
+
 function storeSearchUrl(store, item) { return STORES[store].search(item.search); }
 
 
@@ -759,8 +806,9 @@ function currentList(){return state.plan?buildList(state.plan,state.settings,pri
 function targets(){return planTargets(state.settings,cyc())}
 
 function regenerate(keepLocks=true,quiet=false){
-  const res=generatePlan(state.settings,priceFeed,state.overrides,{locked:keepLocks?state.locked:{},cycle:cyc()});
-  state.plan=res.plan;state.checked={};if(!keepLocks)state.locked={};
+  state.locked=keepLocks?validLocks(state.locked,state.settings):{};
+  const res=generatePlan(state.settings,priceFeed,state.overrides,{locked:state.locked,cycle:cyc()});
+  state.plan=res.plan;state.checked={};
   save();render();
   if(quiet)return;
   if(res.warning)toast(res.warning);
@@ -813,7 +861,7 @@ function renderPlan(){
   if(d.snacks&&d.snacks.length)body+=`<div class="snacks"><span class="meal-when cap" style="color:var(--oil)">Snacks</span><span>${d.snacks.map(x=>esc(recipeById(x).name)).join(' &nbsp;•&nbsp; ')}</span></div>`;
   body+=`</div><div class="actions"><button class="btn" data-act="gen">Plan a new week</button>${Object.keys(state.locked).length?`<button class="link soft" data-act="genall">Release ${plural(Object.keys(state.locked).length,'kept meal')}</button>`:''}</div>`;
   if(!tg)body+=`<p class="para">${n.protein} g protein and ${n.kcal.toLocaleString('en-ZA')} kcal per person today. Add your training to plan portions around it.</p>`;
-  return h+sec('This week',`<span class="cap soft">${plural(s.householdSize,'person')}</span>`,body);
+  return h+sec('This week',`<span class="cap soft">${householdLabel(s)}</span>`,body);
 }
 
 function renderList(){
@@ -824,7 +872,7 @@ function renderList(){
   let stores=`<div class="stores" role="group" aria-label="Store">`+Object.keys(STORES).map(k=>`<button class="store" data-store="${k}" aria-pressed="${s.store===k}"><span class="cap">${shortStore(k)}</span><span class="v">${money(list.byStore[k])}</span></button>`).join('')+`</div>`;
   h+=sec('Where to shop','',stores);
   let lab=`<div class="label"><div class="label-head"><span class="wm">TAFEL</span><span class="cap">Shopping list</span></div>
-    <div class="label-meta"><span>Week of ${weekStart().toLocaleDateString('en-ZA',{day:'numeric',month:'long'})}</span><span>${left} of ${main.length} to collect</span></div>`;
+    <div class="label-meta"><span>Week of ${weekStart().toLocaleDateString('en-ZA',{day:'numeric',month:'long'})}, ${householdLabel(s)}</span><span>${left} of ${main.length} to collect</span></div>`;
   let aisle='';
   for(const i of main){
     if(i.aisle!==aisle){aisle=i.aisle;lab+=`<div class="aisle">${esc(aisle)}</div>`}
@@ -845,9 +893,10 @@ const opts=(group,o,sel)=>`<div class="opts">${Object.entries(o).map(([k,v])=>`<
 function renderSettings(){
   const s=state.settings;
   let h=sec('Household','',`<div class="fields">
-    <div class="field"><span class="lbl" id="l-hh">People eating</span><div class="stepper" role="group" aria-labelledby="l-hh"><button data-step="-1" aria-label="Fewer people">−</button><output>${s.householdSize}</output><button data-step="1" aria-label="More people">+</button></div></div>
+    <div class="field"><span class="lbl" id="l-hh">Adults</span><div class="stepper" role="group" aria-labelledby="l-hh"><button data-step="-1" aria-label="Fewer adults">−</button><output>${s.householdSize}</output><button data-step="1" aria-label="More adults">+</button></div></div>
     <div class="field"><label for="f-budget">Weekly grocery budget</label><div class="affix"><span>R</span><input id="f-budget" type="number" inputmode="numeric" min="100" step="50" data-set="weeklyBudget" value="${s.weeklyBudget}"></div></div>
     <div class="field"><label for="f-store">Where you shop</label><select id="f-store" data-set="store">${Object.keys(STORES).map(k=>`<option value="${k}" ${s.store===k?'selected':''}>${esc(STORES[k].name)}</option>`).join('')}</select></div></div>
+    <div class="field" style="margin-top:26px"><span class="lbl">Children</span><div class="kids">${Object.entries(KID_GROUPS).map(([g,v])=>`<div class="kid"><span>${v.label}<small>${Math.round(v.factor*100)}% of an adult portion</small></span><div class="stepper" role="group" aria-label="Children ${v.label}"><button data-kid="${g}" data-n="-1" aria-label="Fewer children ${v.label}">−</button><output>${s.kids[g]||0}</output><button data-kid="${g}" data-n="1" aria-label="More children ${v.label}">+</button></div></div>`).join('')}</div><p class="para" style="margin-top:8px">With children at the table, Tafel leans towards mild, familiar meals.</p></div>
     <div class="field" style="margin-top:26px"><span class="lbl">Meals to plan</span><div class="opts">${['breakfast','lunch','dinner'].map(m=>`<button class="opt" data-meal="${m}" aria-pressed="${s.meals[m]}">${cap1(m)}</button>`).join('')}</div></div>
     <div class="toggle" style="margin-top:14px"><label for="f-staples">Count pantry staples in the total<small>Oil, spices, flour, stock cubes and sauces</small></label><input class="sw" type="checkbox" id="f-staples" data-set="includeStaples" ${s.includeStaples?'checked':''}></div>`);
   h+=sec('Dietary requirements','',`<div class="field"><span class="lbl">Avoid</span>${opts('diets',DIETS,s.diets)}</div><div class="field" style="margin-top:22px"><span class="lbl">Lean towards</span>${opts('prefs',PREFERENCES,s.prefs)}</div>
@@ -865,7 +914,7 @@ function renderSettings(){
 function renderCycle(){
   const c=cycle;
   let b=`<div class="toggle" style="padding-top:0"><label for="cy-on" style="font-size:19px">Plan around my cycle<small>For anyone who menstruates. Iron-rich meals on period days and just after, and about ${LUTEAL_TOPUP_KCAL} kcal extra before a period when training targets are on.</small></label><input class="sw" type="checkbox" id="cy-on" data-cy="enabled" ${c.enabled?'checked':''}></div>`;
-  if(c.enabled)b+=`<div class="fields" style="margin-top:18px"><div class="field"><label for="cy-d">Last period started</label><input id="cy-d" type="date" max="${new Date().toISOString().slice(0,10)}" data-cy="lastStart" value="${c.lastStart||''}"></div><div class="field"><label for="cy-l">Cycle length, days</label><input id="cy-l" type="number" min="20" max="45" data-cy="length" value="${c.length}"></div><div class="field"><label for="cy-p">Period length, days</label><input id="cy-p" type="number" min="2" max="10" data-cy="periodDays" value="${c.periodDays}"></div></div><div class="actions"><button class="btn" data-act="gen">Re-plan the week</button></div>`;
+  if(c.enabled)b+=`<div class="fields" style="margin-top:18px"><div class="field"><label for="cy-d">Last period started</label><input id="cy-d" type="date" max="${new Date().toISOString().slice(0,10)}" data-cy="lastStart" value="${c.lastStart||''}"></div><div class="field"><label for="cy-l">Cycle length, days</label><input id="cy-l" type="number" min="20" max="45" data-cy="length" value="${c.length}"></div><div class="field"><label for="cy-p">Period length, days</label><input id="cy-p" type="number" min="2" max="10" data-cy="periodDays" value="${c.periodDays}"></div></div>`;
   b+=`<p class="para">Your cycle dates stay in this browser only and are never saved to your account. This is general guidance, not medical advice; see a doctor about very heavy periods or ongoing tiredness.</p>${c.enabled||c.lastStart?`<div class="actions" style="margin-top:12px"><button class="link soft" data-act="cyclear">Clear cycle data from this browser</button></div>`:''}`;
   return sec('Cycle-aware planning','',b);
 }
@@ -885,7 +934,6 @@ function renderFitness(){
     <div class="field"><label for="ff-k">Your own rest-day kcal</label><input id="ff-k" type="number" inputmode="numeric" data-fit="kcalOverride" placeholder="${t.restKcal}" value="${f.kcalOverride??''}"></div></div>
     <div class="field" style="margin-top:26px"><span class="lbl">Goal</span><div class="opts">${Object.entries(GOALS).map(([k,v])=>`<button class="opt" data-goal="${k}" aria-pressed="${f.goal===k}">${esc(v.label)}</button>`).join('')}</div></div>
     <div class="toggle" style="margin-top:14px"><label for="ff-sn">Add protein snacks<small>Eggs, yoghurt, milk or tuna, added when meals fall short</small></label><input class="sw" type="checkbox" id="ff-sn" data-fit="snacks" ${f.snacks?'checked':''}></div>
-    <div class="actions"><button class="btn" data-act="gen">Re-plan the week</button></div>
     <p class="para">Targets are estimates from the Mifflin-St Jeor formula and typical session burn, a starting point rather than medical advice.</p>`);
   return h;
 }
@@ -903,9 +951,9 @@ function renderSheet(){
     kicker='Swap';
     inner=`<h2 id="sh-t">${DAYS[d]} ${slot}</h2><p class="sub">Ordered by what each does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><span class="an">${esc(a.recipe.name)}</span><small>${a.recipe.mins} min &nbsp;•&nbsp; ${a.nutrition.protein} g protein &nbsp;•&nbsp; ${a.nutrition.kcal} kcal${cw&&['period','recovery'].includes(cw[+d].phase)?` &nbsp;•&nbsp; ${a.nutrition.iron} mg iron`:''}</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
   }else if(sheet.type==='recipe'){
-    const r=recipeById(sheet.id),n=recipeNutrition(r),hh=state.settings.householdSize;
+    const r=recipeById(sheet.id),n=recipeNutrition(r),hh=eaters(state.settings);
     kicker='Recipe';
-    inner=`<h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes &nbsp;•&nbsp; ${n.protein} g protein &nbsp;•&nbsp; ${n.kcal} kcal per person</p><h3>Ingredients for ${plural(hh,'person')}</h3><ul class="ing">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];return `<li>${esc(ing.name.replace(/ \(.*\)/,''))}<span>${formatQty({qty:q*hh/4,unit:ing.unit})}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps">`+r.steps.map(x=>`<li><span>${esc(x)}</span></li>`).join('')+`</ol>`;
+    inner=`<h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes &nbsp;•&nbsp; ${n.protein} g protein &nbsp;•&nbsp; ${n.kcal} kcal per person</p><h3>Ingredients for ${householdLabel(state.settings)}</h3><ul class="ing">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];return `<li>${esc(ing.name.replace(/ \(.*\)/,''))}<span>${formatQty({qty:q*hh/4,unit:ing.unit})}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps">`+r.steps.map(x=>`<li><span>${esc(x)}</span></li>`).join('')+`</ol>`;
   }else if(sheet.type==='text'){
     kicker='Groceries';
     inner=`<h2 id="sh-t">Shopping list</h2><p class="sub">Select all, then paste into WhatsApp or Notes.</p><textarea readonly aria-labelledby="sh-t">${esc(listAsText(currentList(),state.settings))}</textarea>`;
@@ -930,7 +978,7 @@ function render(){
 // ---------------- Events ----------------
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal]');
+  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal],[data-kid]');
   if(!t)return;
   if(t.dataset.close){if(t.classList.contains('sheet-bg')&&e.target!==t)return;closeSheet();return}
   const s=state.settings;
@@ -939,6 +987,7 @@ document.addEventListener('click',async e=>{
   if(t.dataset.store){s.store=t.dataset.store;save();render();return}
   if(t.dataset.step){s.householdSize=Math.min(12,Math.max(1,s.householdSize+ +t.dataset.step));save();render();return}
   if(t.dataset.goal){s.fitness.goal=t.dataset.goal;save();render();return}
+  if(t.dataset.kid){const g=t.dataset.kid;s.kids[g]=Math.min(8,Math.max(0,(s.kids[g]||0)+ +t.dataset.n));save();render();return}
   if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else{const [d,m]=k.split(':');state.locked[k]=state.plan.days[+d][m]}save();render();return}
   if(t.dataset.swap){openSheet({type:'swap',key:t.dataset.swap});return}
   if(t.dataset.recipe){openSheet({type:'recipe',id:t.dataset.recipe});return}
@@ -958,10 +1007,23 @@ document.addEventListener('change',e=>{
   if(t.dataset.check){if(t.checked)state.checked[t.dataset.check]=true;else delete state.checked[t.dataset.check];save();render();return}
   if(t.dataset.set){const k=t.dataset.set;s[k]=t.type==='checkbox'?t.checked:t.type==='number'?Math.max(100,Number(t.value)||100):t.value;save();render();return}
   if(t.dataset.price){const v=t.value.trim();if(v==='')delete state.overrides[t.dataset.price];else state.overrides[t.dataset.price]=Number(v);save();render();return}
-  if(t.dataset.fit){const k=t.dataset.fit;let v=t.type==='checkbox'?t.checked:t.value;if(t.type==='number')v=v===''?(k.endsWith('Override')?null:s.fitness[k]):Number(v);s.fitness[k]=v;save();if(k==='enabled'&&v)regenerate(true,true);render();return}
+  if(t.dataset.fit){const k=t.dataset.fit;let v=t.type==='checkbox'?t.checked:t.value;if(t.type==='number')v=v===''?(k.endsWith('Override')?null:s.fitness[k]):Number(v);s.fitness[k]=v;save();render();return}
   if(t.dataset.week){s.fitness.week[+t.dataset.week]=t.value;save();render();return}
   if(t.dataset.cy){const k=t.dataset.cy;let v=t.type==='checkbox'?t.checked:t.value;if(k==='length')v=Math.min(45,Math.max(20,+v||28));if(k==='periodDays')v=Math.min(10,Math.max(2,+v||5));if(k==='lastStart'&&!v)v=null;cycle={...cycle,[k]:v};saveCycle();if(cycle.enabled&&cycle.lastStart)regenerate(true,true);render();return}
 });
+
+// Re-plan straight away when a setting that affects meals changes (store choice excluded).
+let inputsBefore=null;
+const snapInputs=()=>{inputsBefore=planInputsKey(state.settings,state.overrides)};
+document.addEventListener('click',snapInputs,true);
+document.addEventListener('change',snapInputs,true);
+const replanIfChanged=()=>{
+  if(inputsBefore===null||!state.plan)return;
+  const now=planInputsKey(state.settings,state.overrides);
+  if(now!==inputsBefore){inputsBefore=now;regenerate(true,true);toast('Week updated')}
+};
+document.addEventListener('click',replanIfChanged);
+document.addEventListener('change',replanIfChanged);
 
 // ---------------- Boot ----------------
 loadLocal();

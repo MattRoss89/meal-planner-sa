@@ -207,8 +207,31 @@ export function cycleWeek(cycle, weekStart) {
 }
 export const CYCLE_LABELS = { period: 'Period', recovery: 'After period', luteal: 'Before period', mid: '' };
 
+// Children eat smaller portions; factors are shares of an adult portion.
+export const KID_GROUPS = {
+  toddler: { label: 'Ages 1–3', factor: 0.4 },
+  child:   { label: 'Ages 4–8', factor: 0.6 },
+  preteen: { label: 'Ages 9–13', factor: 0.8 },
+  teen:    { label: 'Ages 14–17', factor: 1.0 },
+};
+// Recipes most children happily eat (mild, familiar).
+export const KID_FRIENDLY = new Set(['b_oats_banana','b_eggs_toast','b_maize_porridge','b_yog_oats','b_pb_toast','b_vegan_oats','b_fruit_yog','b_eggs_avo',
+  'l_tuna_wraps','l_chicken_sarmie','l_egg_wraps','l_quesadilla','l_pilchards_toast','l_butternut_soup','l_chakalaka_bread',
+  'd_bolognese','d_wors_pap','d_hake_chips','d_fishcakes','d_cottage_pie','d_soya_bolognese','d_pork_mash','d_mushroom_pasta','d_stirfry','d_egg_fried_rice','d_tuna_bake','d_roast_chicken_veg','d_garlic_chicken','d_samp_beans']);
+
+export function kidCount(s) { return Object.values((s && s.kids) || {}).reduce((a, n) => a + (Number(n) || 0), 0); }
+// Adult-portion equivalents for the whole household.
+export function eaters(s) {
+  return (Number(s.householdSize) || 1) + Object.entries(s.kids || {}).reduce((a, [g, n]) => a + (Number(n) || 0) * ((KID_GROUPS[g] || {}).factor || 0), 0);
+}
+export function householdLabel(s) {
+  const a = Number(s.householdSize) || 1, k = kidCount(s);
+  return `${a} ${a === 1 ? 'adult' : 'adults'}${k ? `, ${k} ${k === 1 ? 'child' : 'children'}` : ''}`;
+}
+
 export const DEFAULT_SETTINGS = {
-  householdSize: 2,
+  householdSize: 2, // adults (and teens counted as adults if preferred)
+  kids: { toddler: 0, child: 0, preteen: 0, teen: 0 },
   weeklyBudget: 1200,
   store: 'checkers',
   diets: [],
@@ -232,6 +255,7 @@ export function mergeSettings(s) {
   return {
     ...d, ...s,
     meals: { ...d.meals, ...(s.meals || {}) },
+    kids: { ...d.kids, ...(s.kids || {}) },
     fitness: { ...d.fitness, ...(s.fitness || {}), week: (s.fitness && Array.isArray(s.fitness.week) && s.fitness.week.length === 7) ? s.fitness.week : d.fitness.week },
     diets: Array.isArray(s.diets) ? s.diets : [],
     prefs: Array.isArray(s.prefs) ? s.prefs : [],
@@ -297,8 +321,8 @@ export function buildList(plan, settings, priceFeed, overrides) {
   const need = {};
   const add = (id, q) => { need[id] = (need[id] || 0) + q; };
   for (const day of plan.days) {
-    // The fitness person eats `portion` servings; everyone else 1 serving.
-    const scale = (s.householdSize - 1 + (day.portion || 1)) / 4;
+    // The fitness person eats `portion` servings; everyone else a standard serving (children less).
+    const scale = (eaters(s) - 1 + (day.portion || 1)) / 4;
     for (const slot of ['breakfast', 'lunch', 'dinner']) {
       const r = day[slot] && recipeById(day[slot]);
       if (r) for (const [id, q] of Object.entries(r.ing)) add(id, q * scale);
@@ -397,6 +421,7 @@ function evaluate(plan, settings, priceFeed, overrides, targets, opts) {
   const counts = {};
   for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl]) counts[d[sl]] = (counts[d[sl]] || 0) + 1;
   for (const c of Object.values(counts)) score -= (c - 1) * (c - 1) * 30; // repeats
+  if (kidCount(settings) > 0) for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl] && KID_FRIENDLY.has(d[sl])) score += 25;
   // Reward a mix of chicken / red meat / fish / meat-free dinners (within the diet).
   const kinds = new Set(plan.days.map(d => {
     const r = d.dinner && recipeById(d.dinner); if (!r) return null;
@@ -505,6 +530,24 @@ export function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
   trial.days[dayIdx][slot] = recipeId;
   addSnacks(trial, s, planTargets(s, cycle));
   return trial;
+}
+
+// What feeds the planner (store choice excluded: it only changes prices, not meals).
+export function planInputsKey(settings, overrides) {
+  const { store, ...rest } = mergeSettings(settings);
+  return JSON.stringify([rest, overrides || {}]);
+}
+
+// Kept meals that still fit the current settings.
+export function validLocks(locked, settings) {
+  const s = mergeSettings(settings);
+  const out = {};
+  for (const [k, id] of Object.entries(locked || {})) {
+    const [, slot] = k.split(':');
+    const r = recipeById(id);
+    if (r && s.meals[slot] && allowedRecipe(r, s.diets)) out[k] = id;
+  }
+  return out;
 }
 
 export function storeSearchUrl(store, item) { return STORES[store].search(item.search); }

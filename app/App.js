@@ -13,7 +13,7 @@ import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium } from '@ex
 import * as Bodoni from '@expo-google-fonts/bodoni-moda';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
-  cycleWeek, planTargets, CYCLE_LABELS, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
+  cycleWeek, planTargets, planInputsKey, validLocks, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
 } from './src/core';
@@ -209,7 +209,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
       <View style={{ backgroundColor: t.paper, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 14 }}>
         <View style={{ alignItems: 'center', gap: 2, paddingBottom: 10 }}>
           <T font="slipSemi" size={14} style={[P, { letterSpacing: 5 }]}>TAFEL</T><T font="slip" size={11} color={t.paperMuted} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>Shopping list, {shortStore(s.store)}</T>
-          <T font="slip" size={12} color={t.paperMuted}>Week of {weekStart().toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}, {plural(s.householdSize, 'person')}</T>
+          <T font="slip" size={12} color={t.paperMuted}>Week of {weekStart().toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}, {householdLabel(s)}</T>
           <T font="slip" size={12} color={t.paperMuted}>{left} of {plural(main.length, 'item')} still to get</T>
         </View>
         <Dashed color={t.paperLine} />
@@ -279,7 +279,7 @@ function CycleSection({ cycle, setCycle, regenerate }) {
   const set = patch => setCycle({ ...c, ...patch });
   return <Section title="Cycle-aware planning" lead="For anyone who menstruates. Optional, and you can turn it off or clear it any time.">
     <SwitchRow title="Plan around my cycle" sub={`Iron-rich meals on period days and just after, and about ${LUTEAL_TOPUP_KCAL} kcal extra on higher-appetite days before a period when training targets are on.`}
-      value={c.enabled} onChange={v => { set({ enabled: v }); if (v && c.lastStart) setTimeout(() => regenerate(true, true), 0); }} />
+      value={c.enabled} onChange={v => set({ enabled: v })} />
     {c.enabled && <>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <Field label="Last period started (YYYY-MM-DD)">
@@ -293,10 +293,9 @@ function CycleSection({ cycle, setCycle, regenerate }) {
         <Field label="Cycle length (days)"><NumInput value={c.length} onChange={v => set({ length: Math.min(45, Math.max(20, Number(v) || 28)) })} /></Field>
         <Field label="Period length (days)"><NumInput value={c.periodDays} onChange={v => set({ periodDays: Math.min(10, Math.max(2, Number(v) || 5)) })} /></Field>
       </View>
-      <Btn kind="primary" title="Re-plan the week" onPress={() => regenerate(true)} style={{ alignSelf: 'flex-start' }} />
     </>}
     <T muted size={13}>Your cycle dates stay on this device only. Tafel never sends them to our servers, so they won't sync to your other devices. This is general guidance, not medical advice; see a doctor about very heavy periods or ongoing tiredness.</T>
-    {(c.enabled || c.lastStart) && <Btn title="Clear cycle data from this device" onPress={() => { setCycle(DEFAULT_CYCLE); setTimeout(() => regenerate(true, true), 0); }} />}
+    {(c.enabled || c.lastStart) && <Btn title="Clear cycle data from this device" onPress={() => setCycle(DEFAULT_CYCLE)} />}
   </Section>;
 }
 
@@ -308,7 +307,7 @@ function FitnessScreen({ data, update, regenerate, cycle, setCycle }) {
   const tg = fitnessTargets(f);
   return <View>
     <Section><SwitchRow big title="Plan around training" sub="Bigger portions on training days, a daily protein target, and protein snacks on the list when meals fall short."
-      value={f.enabled} onChange={v => { setF('enabled', v); if (v) setTimeout(() => regenerate(true, true), 0); }} /></Section>
+      value={f.enabled} onChange={v => setF('enabled', v)} /></Section>
     <CycleSection cycle={cycle} setCycle={setCycle} regenerate={regenerate} />
     {!f.enabled ? <T muted size={13}>Targets apply to one person in the household. Everyone else eats standard portions.</T> : <>
       <Section title="Daily targets">
@@ -339,7 +338,6 @@ function FitnessScreen({ data, update, regenerate, cycle, setCycle }) {
         </View>
         <SwitchRow title="Add protein snacks" sub="Eggs, yoghurt, milk or tuna, added to the list when meals fall short" value={f.snacks} onChange={v => setF('snacks', v)} />
       </Section>
-      <Btn kind="primary" icon="refresh" title="Re-plan the week" onPress={() => regenerate(true)} style={{ alignSelf: 'flex-start' }} />
       <T muted size={13} style={{ marginTop: 14 }}>Targets are estimates from the Mifflin-St Jeor formula plus typical session burn. They're a starting point, not medical advice.</T>
     </>}
   </View>;
@@ -351,19 +349,28 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
   const s = data.settings;
   const toggle = (k, v) => update(d => { const a = d.settings[k]; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); });
   const step = n => update(d => { d.settings.householdSize = Math.min(12, Math.max(1, s.householdSize + n)); });
+  const stepKid = (g, n) => update(d => { d.settings.kids[g] = Math.min(8, Math.max(0, (s.kids[g] || 0) + n)); });
+  const Stepper = ({ value, onMinus, onPlus, label }) => <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: t.ink, minWidth: 130 }}>
+    <TouchableOpacity accessibilityLabel={`Fewer ${label}`} onPress={onMinus} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>−</T></TouchableOpacity>
+    <T font="bold" size={16} style={{ flex: 1, textAlign: 'center' }}>{value}</T>
+    <TouchableOpacity accessibilityLabel={`More ${label}`} onPress={onPlus} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>+</T></TouchableOpacity>
+  </View>;
   let aisle = '';
   return <View>
     <Section title="Household and budget">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <Field label="People eating">
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.line, borderRadius: 0, backgroundColor: t.bg }}>
-            <TouchableOpacity accessibilityLabel="Fewer people" onPress={() => step(-1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>−</T></TouchableOpacity>
-            <T font="bold" size={16} style={{ flex: 1, textAlign: 'center' }}>{s.householdSize}</T>
-            <TouchableOpacity accessibilityLabel="More people" onPress={() => step(1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>+</T></TouchableOpacity>
-          </View>
-        </Field>
+        <Field label="Adults"><Stepper value={s.householdSize} label="adults" onMinus={() => step(-1)} onPlus={() => step(1)} /></Field>
         <Field label="Weekly grocery budget"><NumInput prefix="R" value={s.weeklyBudget} onChange={v => update(d => { d.settings.weeklyBudget = Math.max(100, Number(v) || 100); })} /></Field>
       </View>
+      <Field label="Children">
+        <View style={{ borderTopWidth: 1, borderColor: t.line }}>
+          {Object.entries(KID_GROUPS).map(([g, v]) => <View key={g} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: t.line, paddingVertical: 2 }}>
+            <View><T>{v.label}</T><T muted size={12.5}>{Math.round(v.factor * 100)}% of an adult portion</T></View>
+            <Stepper value={s.kids[g] || 0} label={`children ${v.label.toLowerCase()}`} onMinus={() => stepKid(g, -1)} onPlus={() => stepKid(g, 1)} />
+          </View>)}
+        </View>
+        <T muted size={12.5}>With children at the table, Tafel leans towards mild, familiar meals.</T>
+      </Field>
       <Field label="Where you shop"><Chips>{Object.keys(STORES).map(k => <Chip key={k} label={shortStore(k)} on={s.store === k} onPress={() => update(d => { d.settings.store = k; })} />)}</Chips></Field>
       <Field label="Meals to plan"><Chips>{['breakfast', 'lunch', 'dinner'].map(m => <Chip key={m} label={cap(m)} on={s.meals[m]} onPress={() => update(d => { d.settings.meals[m] = !s.meals[m]; })} />)}</Chips></Field>
       <SwitchRow title="Count pantry staples in the total" sub="Oil, spices, flour, stock cubes and sauces" value={s.includeStaples} onChange={v => update(d => { d.settings.includeStaples = v; })} />
@@ -413,9 +420,9 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
         </TouchableOpacity>;
       })}</>;
   } else if (sheet.type === 'recipe') {
-    const r = recipeById(sheet.id), n = recipeNutrition(r), hh = s.householdSize;
+    const r = recipeById(sheet.id), n = recipeNutrition(r), hh = eaters(s);
     body = <><H size={22}>{r.name}</H><T muted size={14}>{r.mins} minutes. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
-      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients for {plural(hh, 'person')}</H>
+      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients for {householdLabel(s)}</H>
       {Object.entries(r.ing).map(([id, q]) => <View key={id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderColor: t.line }}>
         <T>{INGREDIENTS[id].name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: INGREDIENTS[id].unit })}</T></View>)}
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Method</H>
@@ -524,9 +531,14 @@ function Main() {
   const [account, setAccount] = useState(undefined);
   // Cycle data is health information: kept on this device only, never in the cloud.
   const cycleRef = useRef(DEFAULT_CYCLE);
+  const replanToast = useRef(null);
   const [cycle, setCycleRaw] = useState(DEFAULT_CYCLE);
   useEffect(() => { AsyncStorage.getItem('tafel-cycle').then(v => { if (v) try { { const c = { ...DEFAULT_CYCLE, ...JSON.parse(v) }; cycleRef.current = c; setCycleRaw(c); } } catch (e) {} }).catch(() => {}); }, []);
-  const setCycle = c => { cycleRef.current = c; setCycleRaw(c); AsyncStorage.setItem('tafel-cycle', JSON.stringify(c)).catch(() => {}); };
+  const setCycle = c => {
+    const before = JSON.stringify(cycleWeek(cycleRef.current, weekStart()));
+    cycleRef.current = c; setCycleRaw(c); AsyncStorage.setItem('tafel-cycle', JSON.stringify(c)).catch(() => {});
+    if (JSON.stringify(cycleWeek(c, weekStart())) !== before) setTimeout(() => regenerate(true, true), 0); // re-plan when the week's phases change
+  };
   const cyc = cycleWeek(cycle, weekStart());
   const [data, setData] = useState(null);
   const [priceFeed, setPriceFeed] = useState(null);
@@ -561,11 +573,22 @@ function Main() {
   }, [user, guest]);
 
   const toast = m => { setMsg(m); setTimeout(() => setMsg(null), 2400); };
-  const update = fn => setData(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); saveState(user, next); return next; });
+  // Any change to settings or prices that affects meals re-plans the week straight away, keeping Kept meals that still fit.
+  const update = fn => setData(prev => {
+    const next = JSON.parse(JSON.stringify(prev)); fn(next);
+    if (next.plan && planInputsKey(prev.settings, prev.overrides) !== planInputsKey(next.settings, next.overrides)) {
+      next.locked = validLocks(next.locked, next.settings);
+      next.plan = generatePlan(next.settings, priceFeed, next.overrides, { locked: next.locked, cycle: cycleWeek(cycleRef.current, weekStart()) }).plan;
+      next.checked = {};
+      clearTimeout(replanToast.current); replanToast.current = setTimeout(() => toast('Week updated'), 400);
+    }
+    saveState(user, next); return next;
+  });
   const regenerate = (keepLocks, quiet) => {
     setData(prev => {
-      const res = generatePlan(prev.settings, priceFeed, prev.overrides, { locked: keepLocks ? prev.locked : {}, cycle: cycleWeek(cycleRef.current, weekStart()) });
-      const next = { ...prev, plan: res.plan, checked: {}, locked: keepLocks ? prev.locked : {} };
+      const locked = keepLocks ? validLocks(prev.locked, prev.settings) : {};
+      const res = generatePlan(prev.settings, priceFeed, prev.overrides, { locked, cycle: cycleWeek(cycleRef.current, weekStart()) });
+      const next = { ...prev, plan: res.plan, checked: {}, locked };
       saveState(user, next);
       if (!quiet) setTimeout(() => toast(res.warning || (res.overBudget ? 'This is the cheapest week we could find, and it\'s still over budget' : 'New week planned')), 0);
       return next;
@@ -592,7 +615,7 @@ function Main() {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: wide ? 22 : 12, paddingBottom: wide ? 18 : 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
               <View style={{ flexShrink: 1 }}><T font="semi" size={15} style={{ letterSpacing: 6 }}>TAFEL</T>
-                <T muted size={12.5} numberOfLines={1}>{plural(s.householdSize, 'person')}, {money(s.weeklyBudget)} a week{s.diets.length ? ', ' + s.diets.map(d => DIETS[d].label.toLowerCase()).join(', ') : ''}</T></View>
+                <T muted size={12.5} numberOfLines={1}>{householdLabel(s)}, {money(s.weeklyBudget)} a week{s.diets.length ? ', ' + s.diets.map(d => DIETS[d].label.toLowerCase()).join(', ') : ''}</T></View>
             </View>
             {wide && <TabBar tab={tab} setTab={setTab} wide />}
           </View>
