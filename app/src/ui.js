@@ -17,9 +17,10 @@ export const DARK = {
   paper: '#323a2b', paperInk: '#e4ead9', paperLine: '#56604a', paperMuted: '#b7bfa9',
 };
 const SANS = ', "Helvetica Neue", Helvetica, Arial, sans-serif';
-const f = (name) => (Platform.OS === 'web' ? name + SANS : name);
+const SERIF = ', "Bodoni 72", Didot, Georgia, serif';
+const f = (name, stack = SANS) => (Platform.OS === 'web' ? name + stack : name);
 export const FONTS = {
-  display: f('HankenGrotesk_400Regular'), displayHeavy: f('HankenGrotesk_400Regular'),
+  display: f('BodoniModa_500Medium', SERIF), displayHeavy: f('BodoniModa_500Medium', SERIF),
   body: f('HankenGrotesk_400Regular'), medium: f('HankenGrotesk_400Regular'), semi: f('HankenGrotesk_500Medium'), bold: f('HankenGrotesk_500Medium'),
   slip: f('HankenGrotesk_400Regular'), slipSemi: f('HankenGrotesk_500Medium'),
 };
@@ -58,8 +59,9 @@ export function T({ children, style, muted, size = 15, font = 'body', color, ...
   const t = useT();
   return <Text {...p} style={[{ color: color || (muted ? t.muted : t.ink), fontSize: size, fontFamily: FONTS[font] }, style]}>{children}</Text>;
 }
+// Serif for headlines and big figures, matching the Tafel website.
 export function H({ children, size = 18, style, heavy }) {
-  return <T size={size} font={heavy ? 'displayHeavy' : 'display'} style={[{ letterSpacing: -0.2 }, style]}>{children}</T>;
+  return <T size={size} font={heavy ? 'displayHeavy' : 'display'} style={[{ letterSpacing: -0.3, lineHeight: Math.round(size * 1.08) }, style]}>{children}</T>;
 }
 
 export function Btn({ title, icon, onPress, kind = 'default', style }) {
@@ -90,7 +92,7 @@ export function Section({ title, lead, children, style }) {
   return <View style={[{ borderTopWidth: 1, borderColor: t.rule, paddingTop: 16, marginTop: 28, gap: 16 }, style]}>
     {title && <View style={{ gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ width: 6, height: 6, backgroundColor: t.ink }} />
-        <T size={17} style={{ letterSpacing: 1, textTransform: 'uppercase' }}>{title}</T></View>
+        <T size={11.5} muted style={{ letterSpacing: 1.8, textTransform: 'uppercase' }}>{title}</T></View>
       {lead && <T muted size={13.5}>{lead}</T>}</View>}
     {children}
   </View>;

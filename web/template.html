@@ -7,7 +7,7 @@
 <title>Tafel Weekly Meals</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Hanken+Grotesk:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* Tafel: an apothecary-quiet planner. Paper ground, olive ink, sage label colour, amber for training.
    One grotesque at regular weight; structure from full-width hairlines, never cards or shadows. */
@@ -15,6 +15,7 @@
   --paper:#fbf9f3; --ink:#454b39; --soft:#7d8172; --rule:#454b39; --hair:#dedbd0;
   --sage:#dfe7d2; --sage-ink:#3d4433; --oil:#a87b2c; --brick:#9a4a35;
   --font:"Hanken Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --serif:"Bodoni Moda","Bodoni 72",Didot,Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -31,6 +32,7 @@ button,input,select{font:inherit;color:inherit;letter-spacing:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
 :focus-visible{outline:1px solid var(--ink);outline-offset:3px}
 h1,h2,h3{font-weight:400;margin:0;text-wrap:balance}
+.total,.day .dd,.day-title h3,.tgt .v,.meal-name,.big .v,.sheet h2,.label-total,.store .v,.alt .an{font-family:var(--serif);font-weight:500;font-optical-sizing:none;font-variation-settings:"opsz" 18}
 .cap{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 .soft{color:var(--soft)}
 .link{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
@@ -52,7 +54,7 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .sec{border-top:1px solid var(--rule);margin-top:40px;padding-top:16px}
 .sec:first-child{margin-top:28px}
 .sec-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.sec-h h2{display:flex;align-items:center;gap:12px;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+.sec-h h2{display:flex;align-items:center;gap:12px;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
 .sec-h h2::before{content:"";width:6px;height:6px;background:currentColor;flex:none}
 
 /* Summary */

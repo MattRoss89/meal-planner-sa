@@ -9,6 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium } from '@expo-google-fonts/hanken-grotesk';
+import * as Bodoni from '@expo-google-fonts/bodoni-moda';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
@@ -492,6 +493,7 @@ function Main() {
 export default function App() {
   const [loaded, fontError] = useFonts({
     HankenGrotesk_400Regular, HankenGrotesk_500Medium,
+    ...(Bodoni.BodoniModa_500Medium ? { BodoniModa_500Medium: Bodoni.BodoniModa_500Medium } : {}),
   });
   const [waited, setWaited] = useState(false);
   useEffect(() => { const id = setTimeout(() => setWaited(true), 3000); return () => clearTimeout(id); }, []);

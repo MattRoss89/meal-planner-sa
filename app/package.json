@@ -13,6 +13,7 @@
     "sync-core": "node -e \"require('fs').copyFileSync('../shared/core.js','src/core.js')\""
   },
   "dependencies": {
+    "@expo-google-fonts/bodoni-moda": "*",
     "@expo-google-fonts/hanken-grotesk": "*",
     "@expo/metro-runtime": "*",
     "@react-native-async-storage/async-storage": "*",
