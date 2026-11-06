@@ -26,7 +26,14 @@ jobs:
         run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Build web
         working-directory: app
-        run: npx expo export -p web
+        run: |
+          npx expo export -p web
+          # Firebase Hosting never uploads folders named node_modules, so move bundled assets (fonts) out of it.
+          if [ -d dist/assets/node_modules ]; then
+            mv dist/assets/node_modules dist/assets/vendor
+            grep -rl "assets/node_modules" dist | xargs -r sed -i 's#assets/node_modules#assets/vendor#g'
+          fi
+          ls dist/assets/vendor/@expo-google-fonts | head
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

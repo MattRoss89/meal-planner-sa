@@ -15,10 +15,14 @@ export const DARK = {
   train: '#efb35a', trainSoft: '#3a2c17', bad: '#f0806f', badSoft: '#3d1f1b',
   paper: '#f4f0e6', paperInk: '#24282a', paperLine: '#c9c3b6', paperMuted: '#6b6f70',
 };
+const SANS = ', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const MONO = ', ui-monospace, Menlo, Consolas, monospace';
+// On the web, add fallback stacks so text stays sans-serif if a font file is slow or missing.
+const f = (name, stack) => (Platform.OS === 'web' ? name + stack : name);
 export const FONTS = {
-  display: 'BricolageGrotesque_700Bold', displayHeavy: 'BricolageGrotesque_800ExtraBold',
-  body: 'Figtree_400Regular', medium: 'Figtree_500Medium', semi: 'Figtree_600SemiBold', bold: 'Figtree_700Bold',
-  slip: 'IBMPlexMono_400Regular', slipSemi: 'IBMPlexMono_600SemiBold',
+  display: f('BricolageGrotesque_700Bold', SANS), displayHeavy: f('BricolageGrotesque_800ExtraBold', SANS),
+  body: f('Figtree_400Regular', SANS), medium: f('Figtree_500Medium', SANS), semi: f('Figtree_600SemiBold', SANS), bold: f('Figtree_700Bold', SANS),
+  slip: f('IBMPlexMono_400Regular', MONO), slipSemi: f('IBMPlexMono_600SemiBold', MONO),
 };
 export const ThemeCtx = React.createContext(LIGHT);
 export const useT = () => React.useContext(ThemeCtx);
