@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Tafel plans seven days of South African meals around your budget, your diet and your training, then prices the list at Checkers, Pick n Pay, Shoprite, Spar and Woolworths.">
+<meta name="theme-color" content="#fbf9f3">
+<title>Tafel — Weekly meals, costed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Hanken+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Tafel site. Paper ground, olive ink, sage label, amber for training; one olive band for the training story.
+   Display: Bodoni Moda at high optical size. Text: Hanken Grotesk. Structure from hairlines and asymmetry, never cards. */
+:root{
+  --paper:#fbf9f3; --ink:#3f4534; --soft:#666a5b; --hair:#dcd9cd; --rule:#3f4534;
+  --sage:#dfe7d2; --sage-ink:#353c2b; --oil:#8a6120; --band:#2e3326; --band-ink:#eeebe1; --band-soft:#b9bcab;
+  --serif:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+  --sans:"Hanken Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --gut:clamp(20px,5vw,64px); --max:1240px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#1b1e18; --ink:#ebe8dd; --soft:#a9ab9c; --hair:#33382d; --rule:#ebe8dd;
+  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#5a5e50; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1b1e18; --ink:#ebe8dd; --soft:#a9ab9c; --hair:#33382d; --rule:#ebe8dd;
+  --sage:#2f3729; --sage-ink:#e6ecdb; --oil:#d9ac5c; --band:#e6e3d6; --band-ink:#23271e; --band-soft:#5a5e50; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--sans);letter-spacing:.005em;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:1px solid currentColor;outline-offset:4px}
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;text-wrap:balance;letter-spacing:-.015em;font-optical-sizing:auto}
+p{margin:0}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+.cap{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase}
+.soft{color:var(--soft)}
+.u{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;transition:text-decoration-thickness .15s}
+.u:hover{text-decoration-thickness:2px}
+
+/* Masthead */
+.mast{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.mast .wrap{height:58px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.mast nav{display:flex;gap:26px}
+.mast nav a{text-decoration:none;color:var(--soft);transition:color .15s}
+.mast nav a:hover{color:var(--ink)}
+.word{font:500 15px var(--sans);letter-spacing:.44em;margin-right:-.44em;text-decoration:none}
+.mast .go{justify-self:end}
+.btn{display:inline-flex;align-items:center;gap:12px;background:var(--ink);color:var(--paper);padding:15px 24px;text-decoration:none;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;transition:gap .2s ease,background .2s}
+.btn:hover{gap:18px}
+.btn.sm{padding:10px 16px}
+.btn .ar{display:inline-block;width:18px;height:1px;background:currentColor;position:relative}
+.btn .ar::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg)}
+@media (max-width:760px){.mast nav{display:none}.mast .wrap{grid-template-columns:auto 1fr}.word{justify-self:start}}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(32px,6vw,96px);padding:clamp(48px,8vw,112px) 0 clamp(56px,8vw,104px);align-items:start}
+.hero h1{font-size:clamp(46px,7.4vw,104px);line-height:.98}
+.hero .lede{font-size:clamp(17px,1.6vw,20px);max-width:34ch;margin:28px 0 36px;color:var(--soft)}
+.hero .row{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.hero .facts{display:flex;gap:28px;margin-top:56px;padding-top:18px;border-top:1px solid var(--hair);flex-wrap:wrap}
+.hero .facts div{display:grid;gap:2px}
+.hero .facts b{font:400 26px var(--serif)}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+
+/* Live label */
+.label{background:var(--sage);color:var(--sage-ink);padding:clamp(22px,3vw,34px);position:relative}
+.label::before{content:"";position:absolute;inset:8px;border:1px solid color-mix(in srgb,currentColor 30%,transparent);pointer-events:none}
+.lb-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid currentColor;padding-bottom:12px}
+.lb-head .word{font-size:13px}
+.ctrls{display:grid;grid-template-columns:1fr auto;gap:16px 24px;padding:18px 0 16px;border-bottom:1px solid color-mix(in srgb,currentColor 30%,transparent);align-items:center}
+.ctrls label{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase}
+.budget-v{font:400 28px var(--serif);text-align:right}
+input[type=range]{grid-column:1/-1;width:100%;appearance:none;background:transparent;height:20px;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:currentColor}
+input[type=range]::-moz-range-track{height:1px;background:currentColor}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:16px;height:16px;background:var(--sage-ink);margin-top:-7.5px;border-radius:0;transition:transform .15s}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;background:var(--sage-ink);border:0;border-radius:0}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.25)}
+.seg{display:flex;border:1px solid currentColor}
+.seg button{padding:7px 12px;font-size:14px;min-width:36px}
+.seg button+button{border-left:1px solid currentColor}
+.seg button[aria-pressed="true"]{background:var(--sage-ink);color:var(--sage)}
+.dinners{list-style:none;margin:0;padding:4px 0 0}
+.dinners li{display:grid;grid-template-columns:46px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,currentColor 22%,transparent);align-items:baseline;animation:in .35s ease both}
+.dinners li span:first-child{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.dinners li span:last-child{font-size:13px;opacity:.75;white-space:nowrap}
+.lb-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:16px}
+.lb-total b{font:400 clamp(34px,4vw,44px)/1 var(--serif)}
+.lb-note{font-size:13.5px;margin-top:8px;opacity:.85;min-height:2.6em}
+.lb-note .over{color:#8a3b28}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+
+/* Ticker */
+.ticker{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);overflow:hidden;white-space:nowrap}
+.ticker-track{display:inline-flex;gap:0;padding:18px 0;animation:tick 70s linear infinite}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.ticker span{font:400 clamp(20px,2.4vw,30px) var(--serif);padding:0 28px;display:inline-flex;align-items:center;gap:56px}
+.ticker span::after{content:"";width:6px;height:6px;background:var(--oil)}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* Sections */
+section{padding:clamp(72px,10vw,140px) 0}
+.kicker{display:flex;align-items:center;gap:12px;margin-bottom:26px}
+.kicker::before{content:"";width:6px;height:6px;background:currentColor}
+.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,6vw,96px)}
+.sticky{position:sticky;top:110px;align-self:start}
+.split h2{font-size:clamp(36px,4.6vw,64px);line-height:1.02}
+.split .sticky p{margin-top:22px;max-width:36ch;color:var(--soft);font-size:17px}
+@media (max-width:900px){.split{grid-template-columns:1fr}.sticky{position:static}}
+.steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.steps li{display:grid;grid-template-columns:84px 1fr;gap:20px;padding:34px 0;border-bottom:1px solid var(--hair)}
+.steps .n{font:400 40px/1 var(--serif);color:var(--oil)}
+.steps h3{font-size:clamp(24px,2.4vw,32px);margin-bottom:10px}
+.steps p{color:var(--soft);max-width:52ch}
+.steps .eg{margin-top:14px;font-size:14px;display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--hair);border-left:1px solid var(--hair);width:fit-content}
+.steps .eg span{padding:6px 11px;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+@media (max-width:520px){.steps li{grid-template-columns:1fr;gap:8px}}
+
+/* Money */
+.money{border-top:1px solid var(--rule)}
+.money-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,6vw,96px);align-items:end}
+.huge{font:400 clamp(84px,15vw,220px)/.85 var(--serif);letter-spacing:-.04em}
+.huge-cap{margin-top:18px;max-width:40ch;color:var(--soft);font-size:17px}
+.bars{display:grid;gap:14px}
+.bar{display:grid;grid-template-columns:112px 1fr 76px;gap:14px;align-items:center}
+.bar .t{height:1px;background:var(--hair);position:relative}
+.bar .t i{position:absolute;left:0;top:-1px;height:3px;background:var(--soft);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar.best .t i{background:var(--ink)}
+.bar.best{font-weight:500}
+.bar .v{text-align:right}
+.bars-note{font-size:13.5px;color:var(--soft);margin-top:10px}
+@media (max-width:900px){.money-grid{grid-template-columns:1fr}}
+
+/* Training band */
+.band{background:var(--band);color:var(--band-ink)}
+.band .soft{color:var(--band-soft)}
+.band h2{font-size:clamp(40px,5.6vw,80px);line-height:1;max-width:14ch}
+.band-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,6vw,96px);align-items:end}
+.band-top p{font-size:17px;max-width:42ch}
+.week{display:grid;grid-template-columns:repeat(7,1fr);margin-top:64px;border-top:1px solid currentColor}
+.wd{padding:18px 12px 20px;border-right:1px solid color-mix(in srgb,currentColor 25%,transparent);display:grid;gap:6px;align-content:start;min-height:190px}
+.wd:last-child{border-right:0}
+.wd .act{font-size:13.5px;min-height:2.6em}
+.wd .act.on{color:var(--oil)}
+.wd .k{font:400 clamp(22px,2.4vw,32px)/1 var(--serif);margin-top:auto}
+.wd .kl{font-size:12px}
+.band-foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:28px;padding-top:18px;border-top:1px solid color-mix(in srgb,currentColor 25%,transparent)}
+.band-foot b{font:400 32px var(--serif);display:block}
+@media (max-width:900px){.band-top{grid-template-columns:1fr}.week{grid-template-columns:repeat(7,minmax(92px,1fr));overflow-x:auto}.wd{min-height:160px}}
+
+/* Diets */
+.diets{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(32px,6vw,96px);border-top:1px solid var(--rule);padding-top:22px}
+.diets h2{font-size:clamp(32px,3.6vw,48px);line-height:1.05}
+.tags{display:flex;flex-wrap:wrap;border-top:1px solid var(--hair);border-left:1px solid var(--hair);align-self:start}
+.tags span{padding:14px 18px;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);font-size:17px;transition:background .2s}
+.tags span:hover{background:var(--sage);color:var(--sage-ink)}
+@media (max-width:900px){.diets{grid-template-columns:1fr}}
+
+/* Notes */
+.notes{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0;border-top:1px solid var(--rule)}
+.note{padding:28px 28px 28px 0;border-bottom:1px solid var(--hair)}
+.note:nth-child(1){grid-column:1/6}.note:nth-child(2){grid-column:6/13;padding-left:28px;border-left:1px solid var(--hair)}
+.note:nth-child(3){grid-column:1/8}.note:nth-child(4){grid-column:8/13;padding-left:28px;border-left:1px solid var(--hair)}
+.note h3{font-size:24px;margin-bottom:10px}
+.note p{color:var(--soft);max-width:48ch}
+@media (max-width:760px){.notes{grid-template-columns:1fr}.note{grid-column:1/-1!important;padding-left:0!important;border-left:0!important;padding-right:0}}
+
+/* Close */
+.close{text-align:left;border-top:1px solid var(--rule)}
+.close h2{font-size:clamp(48px,8vw,120px);line-height:.95;max-width:11ch}
+.close .row{display:flex;gap:28px;align-items:center;margin-top:40px;flex-wrap:wrap}
+footer{border-top:1px solid var(--rule);padding:22px 0 calc(22px + env(safe-area-inset-bottom))}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:13.5px;color:var(--soft)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="mast"><div class="wrap">
+  <nav class="cap" aria-label="Sections"><a href="#how">How it works</a><a href="#money">Prices</a><a href="#training">Training</a></nav>
+  <a class="word" href="#top" aria-label="Tafel, home">TAFEL</a>
+  <a class="btn sm go" href="https://meal-planner-sa.web.app">Open Tafel <span class="ar" aria-hidden="true"></span></a>
+</div></header>
+
+<main id="top">
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <p class="cap soft" style="margin-bottom:26px">Weekly meal planning for South Africa</p>
+      <h1>Seven days of dinners, costed before you leave the house.</h1>
+      <p class="lede">Tell Tafel your budget, your diet and how hard you train. It plans the week, sizes the portions and prices the shopping list at five stores.</p>
+      <div class="row"><a class="btn" href="https://meal-planner-sa.web.app">Plan my week <span class="ar" aria-hidden="true"></span></a><a class="u" href="#how">See how it works</a></div>
+      <div class="facts" aria-label="At a glance">
+        <div><b id="f-recipes"></b><span class="cap soft">Local recipes</span></div>
+        <div><b>5</b><span class="cap soft">Stores compared</span></div>
+        <div><b>R0</b><span class="cap soft">To use</span></div>
+      </div>
+    </div>
+
+    <aside class="label" aria-label="Try Tafel: a live week of dinners">
+      <div class="lb-head"><span class="word">TAFEL</span><span class="cap">Try it, live</span></div>
+      <div class="ctrls">
+        <label for="d-budget">Weekly budget</label><output class="budget-v" id="d-budget-v" for="d-budget"></output>
+        <input type="range" id="d-budget" min="500" max="3000" step="50" value="1200" aria-describedby="d-note">
+        <span class="cap">People</span>
+        <div class="seg" role="group" aria-label="People eating" id="d-people"></div>
+        <span class="cap">I train</span>
+        <div class="seg" role="group" aria-label="Plan around training" id="d-train"></div>
+      </div>
+      <ol class="dinners" id="d-list" aria-live="polite"></ol>
+      <div class="lb-total"><span class="cap">Week's groceries</span><b id="d-total"></b></div>
+      <p class="lb-note" id="d-note"></p>
+    </aside>
+  </div>
+</div>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+
+<section id="how"><div class="wrap split">
+  <div class="sticky">
+    <p class="cap kicker">How it works</p>
+    <h2>You set the rules. Tafel does the Sunday-night maths.</h2>
+    <p>No meal-kit subscription and no imported recipes you can't shop for here. It's built from the ingredients on every South African shelf.</p>
+  </div>
+  <ol class="steps">
+    <li><span class="n">01</span><div><h3>Say what matters</h3><p>How many people you're feeding, what you can spend, and what's off the table. Vegetarian, halal, gluten-free, nut-free and more. Recipes that break a rule never appear.</p>
+      <div class="eg"><span>2 people</span><span>R1 200 a week</span><span>No pork</span><span>Lean towards high-protein</span></div></div></li>
+    <li><span class="n">02</span><div><h3>Get a week that fits</h3><p>Breakfast, lunch and dinner for seven days, with a mix of chicken, red meat, fish and meat-free nights. Don't fancy Thursday? Swap it, and see exactly what it does to the total before you commit.</p></div></li>
+    <li><span class="n">03</span><div><h3>Shop the list once</h3><p>Everything is grouped by aisle and rounded to real pack sizes, so you buy one 2 kg bag of potatoes, not "740 g". Tick items off as you go, or copy the list straight into WhatsApp.</p></div></li>
+  </ol>
+</div></section>
+
+<section id="money" class="money"><div class="wrap">
+  <p class="cap kicker" style="margin-top:22px">Prices</p>
+  <div class="money-grid">
+    <div><div class="huge" id="m-total"></div><p class="huge-cap" id="m-cap"></p></div>
+    <div><div class="bars" id="m-bars"></div><p class="bars-note">The same week, priced at each store. Prices refresh on the 1st of every month.</p></div>
+  </div>
+</div></section>
+
+<section id="training" class="band"><div class="wrap">
+  <p class="cap kicker soft">Training</p>
+  <div class="band-top">
+    <h2>Easy run on Monday. Long run on Saturday. Your plate follows.</h2>
+    <p>Add your week of sessions and Tafel sets a daily protein target, scales your portions on the days you burn more, and tops up the list with eggs, yoghurt or tuna when meals fall short. Everyone else at the table eats as normal.</p>
+  </div>
+  <div class="week" id="t-week"></div>
+  <div class="band-foot"><div><b id="t-protein"></b><span class="soft">protein a day for a 75 kg runner building strength</span></div><div><b id="t-total"></b><span class="soft">kcal across the week, rest days included</span></div></div>
+</div></section>
+
+<section><div class="wrap diets">
+  <div><p class="cap kicker">Dietary needs</p><h2>Built around how you actually eat.</h2></div>
+  <div class="tags" id="g-diets"></div>
+</div></section>
+
+<section style="padding-top:0"><div class="wrap">
+  <div class="notes">
+    <div class="note"><h3>Your data stays yours</h3><p>Sign in with Google and your plans follow you from phone to laptop. No one else can see them, and without an account nothing leaves your browser.</p></div>
+    <div class="note"><h3>Straight to the store</h3><p>Every item links to its search at Checkers, Pick n Pay, Woolworths, Shoprite or Spar. Shop there as you always do, signed in to your own account.</p></div>
+    <div class="note"><h3>Honest about prices</h3><p>Totals are estimates from regular shelf prices, refreshed monthly. Specials will usually bring your bill in lower, never higher. Pay something different? Enter your own price and every plan uses it.</p></div>
+    <div class="note"><h3>Free</h3><p>No trial, no card, no catch. Open it in your browser and add it to your home screen.</p></div>
+  </div>
+</div></section>
+
+<section class="close"><div class="wrap" style="padding-top:22px">
+  <h2>Sunday's sorted. What's for dinner is too.</h2>
+  <div class="row"><a class="btn" href="https://meal-planner-sa.web.app">Plan my week <span class="ar" aria-hidden="true"></span></a><span class="soft">Works on any phone or computer.</span></div>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span class="word" style="font-size:13px">TAFEL</span><span>Made in Cape Town. Prices are estimates, not quotes.</span></div></footer>
+
+<script>
+/*__CORE__*/
+
+const money=n=>'R'+Math.round(n).toLocaleString('en-ZA').replace(/ /g,' ');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shortStore=k=>({shoprite:'Shoprite',checkers:'Checkers',pnp:'Pick n Pay',spar:'Spar',woolworths:'Woolworths'}[k]);
+const demo={budget:1200,people:2,train:false};
+
+// Facts and ticker from the real recipe library.
+document.getElementById('f-recipes').textContent=RECIPES.length;
+const dishes=RECIPES.filter(r=>r.meal==='dinner').map(r=>`<span>${esc(r.name)}</span>`).join('');
+document.getElementById('ticker').innerHTML=dishes+dishes;
+
+// Diet tags.
+document.getElementById('g-diets').innerHTML=[...Object.values(DIETS),...Object.values(PREFERENCES)].map(d=>`<span>${esc(d.label.replace('Prefer ',''))}</span>`).join('');
+
+// Segmented controls.
+function seg(id,opts,key){
+  const el=document.getElementById(id);
+  el.innerHTML=opts.map(([v,l])=>`<button data-v="${v}" aria-pressed="${demo[key]===v}">${l}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;demo[key]=JSON.parse(b.dataset.v);seg(id,opts,key);plan()};
+}
+seg('d-people',[[1,'1'],[2,'2'],[4,'4'],[6,'6']],'people');
+seg('d-train',[[false,'No'],[true,'Yes']],'train');
+
+let timer=null;
+const range=document.getElementById('d-budget');
+range.addEventListener('input',()=>{demo.budget=+range.value;document.getElementById('d-budget-v').textContent=money(demo.budget);clearTimeout(timer);timer=setTimeout(plan,120)});
+
+function settingsFor(d){
+  const s=mergeSettings({householdSize:d.people,weeklyBudget:d.budget});
+  s.fitness.enabled=d.train;
+  return s;
+}
+function plan(){
+  const s=settingsFor(demo);
+  const res=generatePlan(s,null,null,{seed:7+demo.people*13+(demo.train?5:0)+Math.round(demo.budget/50),iterations:160});
+  const list=res.list;
+  document.getElementById('d-budget-v').textContent=money(demo.budget);
+  document.getElementById('d-list').innerHTML=res.plan.days.map((d,i)=>{const r=recipeById(d.dinner);return `<li style="animation-delay:${i*30}ms"><span>${DAYS[i]}</span><span>${esc(r.name)}</span><span>${r.mins} min</span></li>`}).join('');
+  document.getElementById('d-total').textContent=money(list.total);
+  const cheapest=Object.entries(list.byStore).sort((a,b)=>a[1]-b[1])[0];
+  const over=list.total>demo.budget;
+  const t=res.targets;
+  document.getElementById('d-note').innerHTML=(over?`<span class="over">${money(list.total-demo.budget)} over. This is the leanest week we could build at that budget.</span> `:`${money(demo.budget-list.total)} to spare, all three meals a day. `)+(t?`Portions sized for ${t.protein} g protein a day. `:'')+`Cheapest at ${shortStore(cheapest[0])}.`;
+}
+plan();
+
+// Prices section: a typical week for two.
+(function(){
+  const res=generatePlan(mergeSettings({householdSize:2,weeklyBudget:1200}),null,null,{seed:42,iterations:200});
+  const b=res.list.byStore,sorted=Object.entries(b).sort((x,y)=>x[1]-y[1]),max=sorted[sorted.length-1][1];
+  document.getElementById('m-total').textContent=money(sorted[0][1]);
+  document.getElementById('m-cap').innerHTML=`Breakfast, lunch and dinner for two people, for seven days, at ${shortStore(sorted[0][0])}. The identical list is ${money(max-sorted[0][1])} more at ${shortStore(sorted[sorted.length-1][0])}.`;
+  const bars=document.getElementById('m-bars');
+  bars.innerHTML=sorted.map(([k,v],i)=>`<div class="bar ${i===0?'best':''}"><span>${shortStore(k)}</span><span class="t"><i style="width:0"></i></span><span class="v">${money(v)}</span></div>`).join('');
+  const grow=()=>bars.querySelectorAll('.t i').forEach((el,i)=>el.style.width=(sorted[i][1]/max*100)+'%');
+  if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){grow();io.disconnect()}},{threshold:.3});io.observe(bars)}else grow();
+  setTimeout(grow,2500); // never leave the chart empty
+})();
+
+// Training band: a real week of targets.
+(function(){
+  const f={...DEFAULT_SETTINGS.fitness,enabled:true,goal:'gain',week:['easy_run','strength','speed','rest','strength','long_run','rest']};
+  const t=fitnessTargets(f);
+  document.getElementById('t-week').innerHTML=t.days.map((d,i)=>`<div class="wd"><span class="cap soft">${DAYS[i]}</span><span class="act ${d.activity!=='rest'?'on':''}">${esc(ACTIVITIES[d.activity].label)}</span><span class="k">${d.kcal.toLocaleString('en-ZA')}</span><span class="kl soft">kcal</span></div>`).join('');
+  document.getElementById('t-protein').textContent=t.protein+' g';
+  document.getElementById('t-total').textContent=t.days.reduce((a,d)=>a+d.kcal,0).toLocaleString('en-ZA');
+})();
+</script>
+</body>
+</html>
