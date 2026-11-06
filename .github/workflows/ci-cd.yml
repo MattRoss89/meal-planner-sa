@@ -71,8 +71,8 @@ jobs:
     name: ${{ github.event_name == 'pull_request' && 'Deploy preview' || 'Deploy live' }}
     needs: build
     runs-on: ubuntu-latest
-    # Forks don't get secrets, so only deploy for branches in this repo.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Forks and Dependabot don't get repository secrets, so only deploy for our own branches.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

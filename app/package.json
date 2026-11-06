@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "build:web": "expo export -p web",
     "deploy:web": "expo export -p web && firebase deploy --only hosting,firestore:rules",
-    "sync-core": "node -e \"require('fs').copyFileSync('../shared/core.js','src/core.js')\""
+    "sync-core": "cp ../shared/core.js ../shared/plate.js ../shared/billing.js src/"
   },
   "dependencies": {
     "@expo-google-fonts/bodoni-moda": "^0.4.0",
