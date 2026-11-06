@@ -12,12 +12,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Install
+          node-version: 22
+      - name: Pin packages to Expo SDK 54
         working-directory: app
         run: |
-          npm install
-          npx expo install --fix
+          mkdir -p /tmp/expo-sdk && cd /tmp/expo-sdk
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --ignore-scripts --legacy-peer-deps expo@~54.0.0 >/dev/null
+          cd -
+          node scripts/align-deps.mjs /tmp/expo-sdk/node_modules/expo
+      - name: Install
+        working-directory: app
+        run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Build web
         working-directory: app
         run: npx expo export -p web

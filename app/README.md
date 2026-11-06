@@ -13,8 +13,8 @@ One Expo (React Native) codebase builds the Android app, the iPhone app and the 
 Requires Node 20+.
 ```bash
 cd app
-npm install
-npx expo install --fix      # aligns every package with the installed Expo SDK
+npm install --legacy-peer-deps
+npx expo install --fix      # aligns every package with the installed Expo SDK (run once)
 npx expo start --web        # opens the web version
 ```
 To try it on your phone, install a development build (step 4), or run `npx expo start` and scan the QR code. Google sign-in needs a development build; everything else works in Expo Go.
