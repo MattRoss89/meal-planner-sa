@@ -251,6 +251,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
     <p>Add your week of sessions and Tafel estimates a daily protein target, scales your portions on the days you burn more, and tops up the list with eggs, yoghurt or tuna when meals fall short. Everyone else at the table eats as normal.</p>
   </div>
   <div class="week" id="t-week"></div>
+  <p style="margin-top:28px;max-width:62ch">Have a cycle? Turn on cycle-aware planning and Tafel leans towards iron-rich dinners on period days, then adds a little extra on the hungrier days before. Your dates stay on your phone.</p>
   <div class="band-foot"><div><b id="t-protein"></b><span class="soft">protein a day for a 75 kg runner building strength</span></div><div><b id="t-total"></b><span class="soft">kcal across the week, rest days included</span></div></div>
 </div></section>
 
@@ -355,6 +356,13 @@ const INGREDIENTS = {
   peri:         I('Peri-peri sauce', 250, 'ml', 34.99, 'Pantry', '', 0.5, 40, 'peri peri sauce', true),
 };
 
+// Iron in mg per 100 g/ml (or per item for 'ea'), and ingredients that supply vitamin C,
+// which helps the body absorb iron from plant foods. Approximate values; SA maize meal and
+// bread flour are iron-fortified.
+const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0};
+const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg"]);
+for (const [id, ing] of Object.entries(INGREDIENTS)) { ing.iron = IRON[id] || 0; ing.vitC = VIT_C.has(id); }
+
 // ---------- Recipes ----------
 // qty is for 4 servings. lc = low-carb friendly.
 const R = (id, name, meal, mins, ing, steps, lc = false) => ({ id, name, meal, mins, ing, steps, lc });
@@ -455,6 +463,30 @@ const GOALS = {
 };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// ---------- Cycle-aware planning (optional) ----------
+// Kept separate from settings so apps can store it on the device only.
+const IRON_TARGET_MG = 18;       // common guideline for menstruating women aged 19-50
+const LUTEAL_TOPUP_KCAL = 150;   // modest extra on higher-appetite days before a period
+const DEFAULT_CYCLE = { enabled: false, lastStart: null, length: 28, periodDays: 5 };
+
+// Phase for each of the 7 plan days. weekStart is a Date (Monday).
+//  period: bleeding days; recovery: 3 days after; luteal: last 10 days before the next period.
+function cycleWeek(cycle, weekStart) {
+  if (!cycle || !cycle.enabled || !cycle.lastStart) return null;
+  const start = new Date(cycle.lastStart + 'T00:00:00');
+  if (isNaN(start)) return null;
+  const len = Math.min(45, Math.max(20, Number(cycle.length) || 28));
+  const per = Math.min(10, Math.max(2, Number(cycle.periodDays) || 5));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart); d.setDate(d.getDate() + i); d.setHours(0, 0, 0, 0);
+    const diff = Math.round((d - start) / 864e5);
+    const day = ((diff % len) + len) % len + 1; // 1-based cycle day
+    const phase = day <= per ? 'period' : day <= per + 3 ? 'recovery' : day > len - 10 ? 'luteal' : 'mid';
+    return { day, phase };
+  });
+}
+const CYCLE_LABELS = { period: 'Period', recovery: 'After period', luteal: 'Before period', mid: '' };
+
 const DEFAULT_SETTINGS = {
   householdSize: 2,
   weeklyBudget: 1200,
@@ -522,14 +554,14 @@ function recipeById(id) { return RECIPES.find(r => r.id === id) || SNACKS.find(s
 
 // Nutrition per serving (one person).
 function recipeNutrition(r) {
-  let p = 0, k = 0;
+  let p = 0, k = 0, fe = 0, c = false;
   const servings = r.ing && r.id.startsWith('s_') ? 1 : 4;
   for (const [id, q] of Object.entries(r.ing)) {
     const ing = INGREDIENTS[id];
     const f = ing.unit === 'ea' ? q : q / 100;
-    p += ing.protein * f; k += ing.kcal * f;
+    p += ing.protein * f; k += ing.kcal * f; fe += ing.iron * f; if (ing.vitC) c = true;
   }
-  return { protein: Math.round(p / servings), kcal: Math.round(k / servings) };
+  return { protein: Math.round(p / servings), kcal: Math.round(k / servings), iron: Math.round(fe / servings * 10) / 10, vitC: c };
 }
 
 function allowedRecipe(r, diets) {
@@ -597,15 +629,15 @@ function listAsText(list, settings) {
 
 // ---------- Day nutrition ----------
 function dayNutrition(day) {
-  let protein = 0, kcal = 0;
+  let protein = 0, kcal = 0, iron = 0;
   const f = day.portion || 1;
   for (const slot of ['breakfast', 'lunch', 'dinner']) {
     const r = day[slot] && recipeById(day[slot]);
-    if (r) { const n = recipeNutrition(r); protein += n.protein * f; kcal += n.kcal * f; }
+    if (r) { const n = recipeNutrition(r); protein += n.protein * f; kcal += n.kcal * f; iron += n.iron * f; }
   }
   protein = Math.round(protein); kcal = Math.round(kcal);
-  for (const sid of day.snacks || []) { const n = recipeNutrition(recipeById(sid)); protein += n.protein; kcal += n.kcal; }
-  return { protein, kcal };
+  for (const sid of day.snacks || []) { const n = recipeNutrition(recipeById(sid)); protein += n.protein; kcal += n.kcal; iron += n.iron; }
+  return { protein, kcal, iron: Math.round(iron * 10) / 10 };
 }
 
 // ---------- Planner ----------
@@ -639,7 +671,7 @@ function addSnacks(plan, settings, targets) {
 }
 
 // Plan cost + fit score. Lower cost, more variety, closer protein/kcal match = better.
-function evaluate(plan, settings, priceFeed, overrides, targets) {
+function evaluate(plan, settings, priceFeed, overrides, targets, opts) {
   const list = buildList(plan, settings, priceFeed, overrides);
   let score = 0;
   const counts = {};
@@ -663,6 +695,17 @@ function evaluate(plan, settings, priceFeed, overrides, targets) {
     for (const d of plan.days) score += dayNutrition(d).protein * 0.5;
   }
   const over = list.total - settings.weeklyBudget;
+  if (opts && opts.cycle) {
+    plan.days.forEach((d, i) => {
+      const ph = opts.cycle[i] && opts.cycle[i].phase;
+      if (ph === 'period' || ph === 'recovery') {
+        const n = dayNutrition(d);
+        score -= Math.max(0, IRON_TARGET_MG - n.iron) * 10;          // lean towards iron-rich days
+        const dn = d.dinner && recipeById(d.dinner);
+        if (dn && recipeNutrition(dn).vitC) score += 8;              // vitamin C helps absorb plant iron
+      }
+    });
+  }
   score -= over > 0 ? over * 3 + 500 : 0;
   score -= list.total * 0.05; // gentle push toward cheaper
   return { score, list };
@@ -672,7 +715,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
   const s = mergeSettings(settings);
   const locked = opts.locked || {}; // { 'dayIdx:slot': recipeId }
   const base = opts.basePlan;
-  const targets = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const targets = planTargets(s, opts.cycle);
   const rand = rng(opts.seed || Date.now());
   const slots = ['breakfast', 'lunch', 'dinner'].filter(m => s.meals[m]);
   const pools = Object.fromEntries(slots.map(m => [m, candidates(m, s)]));
@@ -690,7 +733,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
       plan.days[d][m] = pool[Math.floor(rand() * pool.length)].id;
     }
     addSnacks(plan, s, targets);
-    const ev = evaluate(plan, s, priceFeed, overrides, targets);
+    const ev = evaluate(plan, s, priceFeed, overrides, targets, opts);
     if (!best || ev.score > best.score) best = { plan, ...ev };
   }
   // Local improvement: try swapping each unlocked slot for every alternative.
@@ -702,7 +745,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
         const trial = JSON.parse(JSON.stringify(best.plan));
         trial.days[d][m] = r.id;
         addSnacks(trial, s, targets);
-        const ev = evaluate(trial, s, priceFeed, overrides, targets);
+        const ev = evaluate(trial, s, priceFeed, overrides, targets, opts);
         if (ev.score > best.score) best = { plan: trial, ...ev };
       }
     }
@@ -715,10 +758,18 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
   };
 }
 
+// Training targets, plus the modest pre-period top-up when cycle-aware planning is on.
+function planTargets(settings, cycle) {
+  if (!settings.fitness.enabled) return null;
+  const t = fitnessTargets(settings.fitness);
+  if (cycle) t.days = t.days.map((d, i) => cycle[i] && cycle[i].phase === 'luteal' ? { ...d, kcal: d.kcal + LUTEAL_TOPUP_KCAL, luteal: true } : d);
+  return t;
+}
+
 // Alternatives for one slot, sorted by resulting weekly total.
-function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides) {
+function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides, cycle) {
   const s = mergeSettings(settings);
-  const targets = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const targets = planTargets(s, cycle);
   return candidates(slot, s).filter(r => r.id !== plan.days[dayIdx][slot]).map(r => {
     const trial = JSON.parse(JSON.stringify(plan));
     trial.days[dayIdx][slot] = r.id;
@@ -728,11 +779,11 @@ function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides) {
   }).sort((a, b) => a.total - b.total);
 }
 
-function applySwap(plan, dayIdx, slot, recipeId, settings) {
+function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
   const s = mergeSettings(settings);
   const trial = JSON.parse(JSON.stringify(plan));
   trial.days[dayIdx][slot] = recipeId;
-  addSnacks(trial, s, s.fitness.enabled ? fitnessTargets(s.fitness) : null);
+  addSnacks(trial, s, planTargets(s, cycle));
   return trial;
 }
 

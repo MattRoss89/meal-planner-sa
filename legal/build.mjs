@@ -53,9 +53,10 @@ const privacy = page('Privacy policy', `
 <tr><th>Account</th><td>Your name, email address and a Google account identifier, when you sign in with Google.</td></tr>
 <tr><th>Planner settings</th><td>Household size, weekly budget, preferred store, dietary requirements, meal choices, prices you enter, saved plans and ticked-off list items.</td></tr>
 <tr><th>Training details (optional)</th><td>If you turn on training: weight, height, age, sex, goal and weekly sessions. Used only to calculate your food targets.</td></tr>
+<tr><th>Cycle dates (optional)</th><td>If you turn on cycle-aware planning, the date your last period started and your usual cycle and period length. <b>These stay on your own device</b>, in the app or your browser's storage. They are never sent to us or to our providers, and they're deleted when you clear them in the app or remove the app.</td></tr>
 <tr><th>Subscription</th><td>Your trial start date, subscription status, next billing date and the Paystack customer and subscription references. We never see or store your card number.</td></tr>
 <tr><th>Technical</th><td>Basic logs kept by our hosting provider (such as IP address and browser type) to run and secure the service.</td></tr></table>
-<p>Providing this information is voluntary. Without an account you can't save plans or subscribe; without training details the training features stay off.</p>
+<p>Providing this information is voluntary. Without an account you can't save plans or subscribe; without training or cycle details those features stay off. Cycle information is health information, which POPIA treats as special personal information; by keeping it only on your device, we never collect or process it.</p>
 <h2>Why we use it</h2>
 <ul><li>To create your meal plans, grocery lists and targets, and keep them in sync between your devices.</li>
 <li>To run your free trial and subscription, and tell you about billing.</li>

@@ -7,13 +7,13 @@ import Svg, { Path, Rect, Circle } from 'react-native-svg';
 export const LIGHT = {
   bg: '#fbf9f3', surface: '#fbf9f3', sunk: '#f2efe6', ink: '#454b39', muted: '#7d8172', line: '#dedbd0', rule: '#454b39',
   accent: '#454b39', accentInk: '#fbf9f3', accentSoft: '#dfe7d2',
-  train: '#a87b2c', trainSoft: '#f3ead8', bad: '#9a4a35', badSoft: '#f3e2dc',
+  train: '#a87b2c', trainSoft: '#f3ead8', bad: '#9a4a35', badSoft: '#f3e2dc', cycle: '#8e4f63', cycleSoft: '#f3e4e8',
   paper: '#dfe7d2', paperInk: '#3d4433', paperLine: '#a9b39a', paperMuted: '#5d6651',
 };
 export const DARK = {
   bg: '#1d201a', surface: '#1d201a', sunk: '#252920', ink: '#e9e6db', muted: '#a3a596', line: '#353a2f', rule: '#e9e6db',
   accent: '#e9e6db', accentInk: '#1d201a', accentSoft: '#323a2b',
-  train: '#d6a956', trainSoft: '#2f2a1e', bad: '#e08a73', badSoft: '#3a231d',
+  train: '#d6a956', trainSoft: '#2f2a1e', bad: '#e08a73', badSoft: '#3a231d', cycle: '#e3a2b4', cycleSoft: '#3a262c',
   paper: '#323a2b', paperInk: '#e4ead9', paperLine: '#56604a', paperMuted: '#b7bfa9',
 };
 const SANS = ', "Helvetica Neue", Helvetica, Arial, sans-serif';

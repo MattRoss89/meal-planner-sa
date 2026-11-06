@@ -13,17 +13,17 @@
    One grotesque at regular weight; structure from full-width hairlines, never cards or shadows. */
 :root{
   --paper:#fbf9f3; --ink:#454b39; --soft:#7d8172; --rule:#454b39; --hair:#dedbd0;
-  --sage:#dfe7d2; --sage-ink:#3d4433; --oil:#a87b2c; --brick:#9a4a35;
+  --sage:#dfe7d2; --sage-ink:#3d4433; --oil:#a87b2c; --brick:#9a4a35; --rose:#8e4f63;
   --font:"Hanken Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
   --serif:"Bodoni Moda","Bodoni 72",Didot,Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#1d201a; --ink:#e9e6db; --soft:#a3a596; --rule:#e9e6db; --hair:#353a2f;
-  --sage:#323a2b; --sage-ink:#e4ead9; --oil:#d6a956; --brick:#e08a73; color-scheme:dark}}
+  --sage:#323a2b; --sage-ink:#e4ead9; --oil:#d6a956; --brick:#e08a73; --rose:#e3a2b4; color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#1d201a; --ink:#e9e6db; --soft:#a3a596; --rule:#e9e6db; --hair:#353a2f;
-  --sage:#323a2b; --sage-ink:#e4ead9; --oil:#d6a956; --brick:#e08a73; color-scheme:dark}
+  --sage:#323a2b; --sage-ink:#e4ead9; --oil:#d6a956; --brick:#e08a73; --rose:#e3a2b4; color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -76,6 +76,11 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .day .dd{font-size:22px;line-height:1.1}
 .day .mk{font-size:10px;letter-spacing:.1em;height:14px;color:var(--oil)}
 .day.short .mk{color:var(--brick)}
+.day .cy{font-size:10px;letter-spacing:.1em;height:14px;color:var(--rose)}
+.cyc-note{border-left:2px solid var(--rose);padding-left:14px;margin:14px 0 4px}
+.cyc-note .v{font-family:var(--serif);font-size:20px}
+.cyc-note .line i{background:var(--rose)}
+.rose{color:var(--rose)}
 .day[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink)}
 .day[aria-pressed="true"] .dn{color:var(--sage-ink)}
 .day-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:26px 0 4px}
@@ -285,6 +290,13 @@ const INGREDIENTS = {
   peri:         I('Peri-peri sauce', 250, 'ml', 34.99, 'Pantry', '', 0.5, 40, 'peri peri sauce', true),
 };
 
+// Iron in mg per 100 g/ml (or per item for 'ea'), and ingredients that supply vitamin C,
+// which helps the body absorb iron from plant foods. Approximate values; SA maize meal and
+// bread flour are iron-fortified.
+const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0};
+const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg"]);
+for (const [id, ing] of Object.entries(INGREDIENTS)) { ing.iron = IRON[id] || 0; ing.vitC = VIT_C.has(id); }
+
 // ---------- Recipes ----------
 // qty is for 4 servings. lc = low-carb friendly.
 const R = (id, name, meal, mins, ing, steps, lc = false) => ({ id, name, meal, mins, ing, steps, lc });
@@ -385,6 +397,30 @@ const GOALS = {
 };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// ---------- Cycle-aware planning (optional) ----------
+// Kept separate from settings so apps can store it on the device only.
+const IRON_TARGET_MG = 18;       // common guideline for menstruating women aged 19-50
+const LUTEAL_TOPUP_KCAL = 150;   // modest extra on higher-appetite days before a period
+const DEFAULT_CYCLE = { enabled: false, lastStart: null, length: 28, periodDays: 5 };
+
+// Phase for each of the 7 plan days. weekStart is a Date (Monday).
+//  period: bleeding days; recovery: 3 days after; luteal: last 10 days before the next period.
+function cycleWeek(cycle, weekStart) {
+  if (!cycle || !cycle.enabled || !cycle.lastStart) return null;
+  const start = new Date(cycle.lastStart + 'T00:00:00');
+  if (isNaN(start)) return null;
+  const len = Math.min(45, Math.max(20, Number(cycle.length) || 28));
+  const per = Math.min(10, Math.max(2, Number(cycle.periodDays) || 5));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart); d.setDate(d.getDate() + i); d.setHours(0, 0, 0, 0);
+    const diff = Math.round((d - start) / 864e5);
+    const day = ((diff % len) + len) % len + 1; // 1-based cycle day
+    const phase = day <= per ? 'period' : day <= per + 3 ? 'recovery' : day > len - 10 ? 'luteal' : 'mid';
+    return { day, phase };
+  });
+}
+const CYCLE_LABELS = { period: 'Period', recovery: 'After period', luteal: 'Before period', mid: '' };
+
 const DEFAULT_SETTINGS = {
   householdSize: 2,
   weeklyBudget: 1200,
@@ -452,14 +488,14 @@ function recipeById(id) { return RECIPES.find(r => r.id === id) || SNACKS.find(s
 
 // Nutrition per serving (one person).
 function recipeNutrition(r) {
-  let p = 0, k = 0;
+  let p = 0, k = 0, fe = 0, c = false;
   const servings = r.ing && r.id.startsWith('s_') ? 1 : 4;
   for (const [id, q] of Object.entries(r.ing)) {
     const ing = INGREDIENTS[id];
     const f = ing.unit === 'ea' ? q : q / 100;
-    p += ing.protein * f; k += ing.kcal * f;
+    p += ing.protein * f; k += ing.kcal * f; fe += ing.iron * f; if (ing.vitC) c = true;
   }
-  return { protein: Math.round(p / servings), kcal: Math.round(k / servings) };
+  return { protein: Math.round(p / servings), kcal: Math.round(k / servings), iron: Math.round(fe / servings * 10) / 10, vitC: c };
 }
 
 function allowedRecipe(r, diets) {
@@ -527,15 +563,15 @@ function listAsText(list, settings) {
 
 // ---------- Day nutrition ----------
 function dayNutrition(day) {
-  let protein = 0, kcal = 0;
+  let protein = 0, kcal = 0, iron = 0;
   const f = day.portion || 1;
   for (const slot of ['breakfast', 'lunch', 'dinner']) {
     const r = day[slot] && recipeById(day[slot]);
-    if (r) { const n = recipeNutrition(r); protein += n.protein * f; kcal += n.kcal * f; }
+    if (r) { const n = recipeNutrition(r); protein += n.protein * f; kcal += n.kcal * f; iron += n.iron * f; }
   }
   protein = Math.round(protein); kcal = Math.round(kcal);
-  for (const sid of day.snacks || []) { const n = recipeNutrition(recipeById(sid)); protein += n.protein; kcal += n.kcal; }
-  return { protein, kcal };
+  for (const sid of day.snacks || []) { const n = recipeNutrition(recipeById(sid)); protein += n.protein; kcal += n.kcal; iron += n.iron; }
+  return { protein, kcal, iron: Math.round(iron * 10) / 10 };
 }
 
 // ---------- Planner ----------
@@ -569,7 +605,7 @@ function addSnacks(plan, settings, targets) {
 }
 
 // Plan cost + fit score. Lower cost, more variety, closer protein/kcal match = better.
-function evaluate(plan, settings, priceFeed, overrides, targets) {
+function evaluate(plan, settings, priceFeed, overrides, targets, opts) {
   const list = buildList(plan, settings, priceFeed, overrides);
   let score = 0;
   const counts = {};
@@ -593,6 +629,17 @@ function evaluate(plan, settings, priceFeed, overrides, targets) {
     for (const d of plan.days) score += dayNutrition(d).protein * 0.5;
   }
   const over = list.total - settings.weeklyBudget;
+  if (opts && opts.cycle) {
+    plan.days.forEach((d, i) => {
+      const ph = opts.cycle[i] && opts.cycle[i].phase;
+      if (ph === 'period' || ph === 'recovery') {
+        const n = dayNutrition(d);
+        score -= Math.max(0, IRON_TARGET_MG - n.iron) * 10;          // lean towards iron-rich days
+        const dn = d.dinner && recipeById(d.dinner);
+        if (dn && recipeNutrition(dn).vitC) score += 8;              // vitamin C helps absorb plant iron
+      }
+    });
+  }
   score -= over > 0 ? over * 3 + 500 : 0;
   score -= list.total * 0.05; // gentle push toward cheaper
   return { score, list };
@@ -602,7 +649,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
   const s = mergeSettings(settings);
   const locked = opts.locked || {}; // { 'dayIdx:slot': recipeId }
   const base = opts.basePlan;
-  const targets = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const targets = planTargets(s, opts.cycle);
   const rand = rng(opts.seed || Date.now());
   const slots = ['breakfast', 'lunch', 'dinner'].filter(m => s.meals[m]);
   const pools = Object.fromEntries(slots.map(m => [m, candidates(m, s)]));
@@ -620,7 +667,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
       plan.days[d][m] = pool[Math.floor(rand() * pool.length)].id;
     }
     addSnacks(plan, s, targets);
-    const ev = evaluate(plan, s, priceFeed, overrides, targets);
+    const ev = evaluate(plan, s, priceFeed, overrides, targets, opts);
     if (!best || ev.score > best.score) best = { plan, ...ev };
   }
   // Local improvement: try swapping each unlocked slot for every alternative.
@@ -632,7 +679,7 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
         const trial = JSON.parse(JSON.stringify(best.plan));
         trial.days[d][m] = r.id;
         addSnacks(trial, s, targets);
-        const ev = evaluate(trial, s, priceFeed, overrides, targets);
+        const ev = evaluate(trial, s, priceFeed, overrides, targets, opts);
         if (ev.score > best.score) best = { plan: trial, ...ev };
       }
     }
@@ -645,10 +692,18 @@ function generatePlan(settings, priceFeed, overrides, opts = {}) {
   };
 }
 
+// Training targets, plus the modest pre-period top-up when cycle-aware planning is on.
+function planTargets(settings, cycle) {
+  if (!settings.fitness.enabled) return null;
+  const t = fitnessTargets(settings.fitness);
+  if (cycle) t.days = t.days.map((d, i) => cycle[i] && cycle[i].phase === 'luteal' ? { ...d, kcal: d.kcal + LUTEAL_TOPUP_KCAL, luteal: true } : d);
+  return t;
+}
+
 // Alternatives for one slot, sorted by resulting weekly total.
-function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides) {
+function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides, cycle) {
   const s = mergeSettings(settings);
-  const targets = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const targets = planTargets(s, cycle);
   return candidates(slot, s).filter(r => r.id !== plan.days[dayIdx][slot]).map(r => {
     const trial = JSON.parse(JSON.stringify(plan));
     trial.days[dayIdx][slot] = r.id;
@@ -658,11 +713,11 @@ function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides) {
   }).sort((a, b) => a.total - b.total);
 }
 
-function applySwap(plan, dayIdx, slot, recipeId, settings) {
+function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
   const s = mergeSettings(settings);
   const trial = JSON.parse(JSON.stringify(plan));
   trial.days[dayIdx][slot] = recipeId;
-  addSnacks(trial, s, s.fitness.enabled ? fitnessTargets(s.fitness) : null);
+  addSnacks(trial, s, planTargets(s, cycle));
   return trial;
 }
 
@@ -673,6 +728,11 @@ function storeSearchUrl(store, item) { return STORES[store].search(item.search);
 const TABS=[['plan','The week'],['list','Groceries'],['fitness','Training'],['settings','Settings']];
 let state={tab:'plan',day:todayIdx(),settings:mergeSettings(null),plan:null,locked:{},overrides:{},checked:{}};
 let priceFeed=null,db=null,userId=null,saveTimer=null,sheet=null,lastFocus=null;
+// Cycle dates are health information: kept in this browser only, never saved to the account.
+const CY_KEY='tafel-cycle';
+let cycle={...DEFAULT_CYCLE};try{const c=JSON.parse(localStorage.getItem(CY_KEY)||'null');if(c)cycle={...DEFAULT_CYCLE,...c}}catch(e){}
+function saveCycle(){try{localStorage.setItem(CY_KEY,JSON.stringify(cycle))}catch(e){}}
+const cyc=()=>cycleWeek(cycle,weekStart());
 const LS_KEY='mealplanner-sa-v1';
 
 function todayIdx(){return (new Date().getDay()+6)%7}
@@ -696,10 +756,10 @@ function save(){
 function applySaved(s){state.settings=mergeSettings(s.settings);state.plan=s.plan||null;state.locked=s.locked||{};state.overrides=s.overrides||{};state.checked=s.checked||{}}
 function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(s)applySaved(s)}catch(e){}}
 function currentList(){return state.plan?buildList(state.plan,state.settings,priceFeed,state.overrides):null}
-function targets(){return state.settings.fitness.enabled?fitnessTargets(state.settings.fitness):null}
+function targets(){return planTargets(state.settings,cyc())}
 
 function regenerate(keepLocks=true,quiet=false){
-  const res=generatePlan(state.settings,priceFeed,state.overrides,{locked:keepLocks?state.locked:{}});
+  const res=generatePlan(state.settings,priceFeed,state.overrides,{locked:keepLocks?state.locked:{},cycle:cyc()});
   state.plan=res.plan;state.checked={};if(!keepLocks)state.locked={};
   save();render();
   if(quiet)return;
@@ -727,11 +787,14 @@ function renderPlan(){
   const s=state.settings,tg=targets(),list=currentList();
   const slots=['breakfast','lunch','dinner'].filter(m=>s.meals[m]);
   const di=state.day,d=state.plan.days[di],n=dayNutrition(d),date=dayDate(di),act=s.fitness.week[di];
+  const cw=cyc(),ph=cw?cw[di].phase:'mid';
   let h=summary(list);
   let body=`<div class="week" role="group" aria-label="Choose a day">`+DAYS.map((nm,i)=>{
     const train=tg&&s.fitness.week[i]!=='rest',short=tg&&dayNutrition(state.plan.days[i]).protein<tg.days[i].protein-5;
-    return `<button class="day ${short?'short':''}" data-day="${i}" aria-pressed="${i===di}" aria-label="${nm} ${dayDate(i).getDate()}${train?', training day':''}"><span class="dn">${nm}</span><span class="dd">${dayDate(i).getDate()}</span><span class="mk">${short?'Low protein':train?'Training':''}</span></button>`}).join('')+`</div>`;
-  body+=`<div class="day-title"><h3>${date.toLocaleDateString('en-ZA',{weekday:'long'})} ${date.getDate()} ${date.toLocaleDateString('en-ZA',{month:'long'})}</h3>${tg?`<span class="cap ${act!=='rest'?'act':'soft'}">${esc(ACTIVITIES[act].label)}</span>`:''}</div>`;
+    return `<button class="day ${short?'short':''}" data-day="${i}" aria-pressed="${i===di}" aria-label="${nm} ${dayDate(i).getDate()}${train?', training day':''}"><span class="dn">${nm}</span><span class="dd">${dayDate(i).getDate()}</span><span class="mk">${short?'Low protein':train?'Training':''}</span><span class="cy">${cw&&cw[i].phase!=='mid'?esc(CYCLE_LABELS[cw[i].phase]):''}</span></button>`}).join('')+`</div>`;
+  body+=`<div class="day-title"><h3>${date.toLocaleDateString('en-ZA',{weekday:'long'})} ${date.getDate()} ${date.toLocaleDateString('en-ZA',{month:'long'})}</h3><span>${ph!=='mid'?`<span class="cap rose">${esc(CYCLE_LABELS[ph])}, day ${cw[di].day}</span> &nbsp; `:''}${tg?`<span class="cap ${act!=='rest'?'act':'soft'}">${esc(ACTIVITIES[act].label)}</span>`:''}</span></div>`;
+  if(ph==='period'||ph==='recovery'){const ip=Math.min(100,n.iron/IRON_TARGET_MG*100);body+=`<div class="cyc-note"><div class="tgt"><div class="row cap soft"><span>Iron</span><span>${Math.round(ip)}%</span></div><div class="v">${n.iron} mg <span class="soft">of about ${IRON_TARGET_MG} mg</span></div><div class="line"><i style="width:${ip}%"></i></div></div><p class="para" style="margin-top:10px">Iron-rich meals are favoured on these days. Eating them with tomato, peppers or broccoli helps your body absorb the iron.</p></div>`}
+  if(ph==='luteal')body+=`<p class="para">${tg?`Appetite often runs higher before a period, so today's target includes about ${LUTEAL_TOPUP_KCAL} kcal extra.`:'Appetite often runs higher before a period. A filling dinner and a snack you enjoy are fine.'}</p>`;
   if(tg){
     const t=tg.days[di],pp=Math.min(100,n.protein/t.protein*100),kp=Math.min(100,n.kcal/t.kcal*100);
     body+=`<div class="targets">
@@ -799,9 +862,16 @@ function renderSettings(){
   return h;
 }
 
+function renderCycle(){
+  const c=cycle;
+  let b=`<div class="toggle" style="padding-top:0"><label for="cy-on" style="font-size:19px">Plan around my cycle<small>For anyone who menstruates. Iron-rich meals on period days and just after, and about ${LUTEAL_TOPUP_KCAL} kcal extra before a period when training targets are on.</small></label><input class="sw" type="checkbox" id="cy-on" data-cy="enabled" ${c.enabled?'checked':''}></div>`;
+  if(c.enabled)b+=`<div class="fields" style="margin-top:18px"><div class="field"><label for="cy-d">Last period started</label><input id="cy-d" type="date" max="${new Date().toISOString().slice(0,10)}" data-cy="lastStart" value="${c.lastStart||''}"></div><div class="field"><label for="cy-l">Cycle length, days</label><input id="cy-l" type="number" min="20" max="45" data-cy="length" value="${c.length}"></div><div class="field"><label for="cy-p">Period length, days</label><input id="cy-p" type="number" min="2" max="10" data-cy="periodDays" value="${c.periodDays}"></div></div><div class="actions"><button class="btn" data-act="gen">Re-plan the week</button></div>`;
+  b+=`<p class="para">Your cycle dates stay in this browser only and are never saved to your account. This is general guidance, not medical advice; see a doctor about very heavy periods or ongoing tiredness.</p>${c.enabled||c.lastStart?`<div class="actions" style="margin-top:12px"><button class="link soft" data-act="cyclear">Clear cycle data from this browser</button></div>`:''}`;
+  return sec('Cycle-aware planning','',b);
+}
 function renderFitness(){
   const f=state.settings.fitness;
-  let h=sec('Training','',`<div class="toggle" style="border-top:0;padding-top:0"><label for="f-fit" style="font-size:19px">Plan around my training<small>Larger portions on training days, a daily protein target, and protein snacks added to the list when meals fall short.</small></label><input class="sw" type="checkbox" id="f-fit" data-fit="enabled" ${f.enabled?'checked':''}></div>`);
+  let h=renderCycle()+sec('Training','',`<div class="toggle" style="border-top:0;padding-top:0"><label for="f-fit" style="font-size:19px">Plan around my training<small>Larger portions on training days, a daily protein target, and protein snacks added to the list when meals fall short.</small></label><input class="sw" type="checkbox" id="f-fit" data-fit="enabled" ${f.enabled?'checked':''}></div>`);
   if(!f.enabled)return h+`<p class="para">Targets apply to one person in the household. Everyone else eats a standard portion.</p>`;
   const t=fitnessTargets(f);
   h+=sec('Daily targets','',`<div class="big"><div><div class="v">${t.protein} g</div><div class="soft">protein a day, ${t.perKg} g per kg</div></div><div><div class="v">${t.restKcal.toLocaleString('en-ZA')}</div><div class="soft">kcal on a rest day</div></div></div>`);
@@ -829,9 +899,9 @@ function renderSheet(){
   let inner='',kicker='';
   if(sheet.type==='swap'){
     const [d,slot]=sheet.key.split(':');const cur=currentList().total;
-    const alts=alternatives(state.plan,+d,slot,state.settings,priceFeed,state.overrides);
+    const cw=cyc();const alts=alternatives(state.plan,+d,slot,state.settings,priceFeed,state.overrides,cw);
     kicker='Swap';
-    inner=`<h2 id="sh-t">${DAYS[d]} ${slot}</h2><p class="sub">Ordered by what each does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><span class="an">${esc(a.recipe.name)}</span><small>${a.recipe.mins} min &nbsp;•&nbsp; ${a.nutrition.protein} g protein &nbsp;•&nbsp; ${a.nutrition.kcal} kcal</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
+    inner=`<h2 id="sh-t">${DAYS[d]} ${slot}</h2><p class="sub">Ordered by what each does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><span class="an">${esc(a.recipe.name)}</span><small>${a.recipe.mins} min &nbsp;•&nbsp; ${a.nutrition.protein} g protein &nbsp;•&nbsp; ${a.nutrition.kcal} kcal${cw&&['period','recovery'].includes(cw[+d].phase)?` &nbsp;•&nbsp; ${a.nutrition.iron} mg iron`:''}</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
   }else if(sheet.type==='recipe'){
     const r=recipeById(sheet.id),n=recipeNutrition(r),hh=state.settings.householdSize;
     kicker='Recipe';
@@ -872,13 +942,14 @@ document.addEventListener('click',async e=>{
   if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else{const [d,m]=k.split(':');state.locked[k]=state.plan.days[+d][m]}save();render();return}
   if(t.dataset.swap){openSheet({type:'swap',key:t.dataset.swap});return}
   if(t.dataset.recipe){openSheet({type:'recipe',id:t.dataset.recipe});return}
-  if(t.dataset.pick){const [d,slot]=sheet.key.split(':');state.plan=applySwap(state.plan,+d,slot,t.dataset.pick,s);state.locked[sheet.key]=t.dataset.pick;sheet=null;save();render();toast('Meal swapped and kept');return}
+  if(t.dataset.pick){const [d,slot]=sheet.key.split(':');state.plan=applySwap(state.plan,+d,slot,t.dataset.pick,s,cyc());state.locked[sheet.key]=t.dataset.pick;sheet=null;save();render();toast('Meal swapped and kept');return}
   if(t.dataset.chip){const arr=s[t.dataset.chip];const i=arr.indexOf(t.dataset.val);if(i>=0)arr.splice(i,1);else arr.push(t.dataset.val);save();render();return}
   if(t.dataset.meal){s.meals[t.dataset.meal]=!s.meals[t.dataset.meal];save();render();return}
   const a=t.dataset.act;
   if(a==='gen'){state.tab='plan';regenerate(true);window.scrollTo(0,0)}
   if(a==='genall'){regenerate(false)}
   if(a==='uncheck'){state.checked={};save();render()}
+  if(a==='cyclear'){cycle={...DEFAULT_CYCLE};saveCycle();regenerate(true,true);toast('Cycle data cleared')}
   if(a==='showtext')openSheet({type:'text'});
   if(a==='copy'){try{await navigator.clipboard.writeText(listAsText(currentList(),s));toast('List copied')}catch(err){openSheet({type:'text'})}}
 });
@@ -889,6 +960,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.price){const v=t.value.trim();if(v==='')delete state.overrides[t.dataset.price];else state.overrides[t.dataset.price]=Number(v);save();render();return}
   if(t.dataset.fit){const k=t.dataset.fit;let v=t.type==='checkbox'?t.checked:t.value;if(t.type==='number')v=v===''?(k.endsWith('Override')?null:s.fitness[k]):Number(v);s.fitness[k]=v;save();if(k==='enabled'&&v)regenerate(true,true);render();return}
   if(t.dataset.week){s.fitness.week[+t.dataset.week]=t.value;save();render();return}
+  if(t.dataset.cy){const k=t.dataset.cy;let v=t.type==='checkbox'?t.checked:t.value;if(k==='length')v=Math.min(45,Math.max(20,+v||28));if(k==='periodDays')v=Math.min(10,Math.max(2,+v||5));if(k==='lastStart'&&!v)v=null;cycle={...cycle,[k]:v};saveCycle();if(cycle.enabled&&cycle.lastStart)regenerate(true,true);render();return}
 });
 
 // ---------------- Boot ----------------

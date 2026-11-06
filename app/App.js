@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -12,6 +13,7 @@ import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium } from '@ex
 import * as Bodoni from '@expo-google-fonts/bodoni-moda';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
+  cycleWeek, planTargets, CYCLE_LABELS, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
 } from './src/core';
@@ -88,7 +90,7 @@ function Summary({ list, settings }) {
   </View>;
 }
 
-function WeekStrip({ day, setDay, plan, settings, targets }) {
+function WeekStrip({ day, setDay, plan, settings, targets, cyc }) {
   const t = useT();
   return <View style={{ flexDirection: 'row', marginTop: 28, marginBottom: 14 }}>
     {DAYS.map((nm, i) => {
@@ -100,28 +102,39 @@ function WeekStrip({ day, setDay, plan, settings, targets }) {
         style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 0, backgroundColor: sel ? t.accentSoft : 'transparent', borderLeftWidth: i ? 1 : 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.line }}>
         <T size={11} color={sel ? t.ink : t.muted} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{nm}</T>
         <H size={20}>{dayDate(i).getDate()}</H>
-        <View style={{ width: 6, height: 6, borderRadius: 0, marginTop: 3, backgroundColor: short ? t.bad : train ? t.train : 'transparent' }} />
+        <View style={{ flexDirection: 'row', gap: 3, marginTop: 3, height: 6 }}>
+          {(short || train) && <View style={{ width: 6, height: 6, backgroundColor: short ? t.bad : t.train }} />}
+          {cyc && cyc[i].phase !== 'mid' && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cyc[i].phase === 'luteal' ? 'transparent' : t.cycle, borderWidth: 1, borderColor: t.cycle }} />}
+        </View>
       </TouchableOpacity>;
     })}
   </View>;
 }
 
-function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDay, narrow }) {
+function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDay, narrow, cyc }) {
   const t = useT();
   const s = data.settings;
   const list = buildList(data.plan, s, priceFeed, data.overrides);
-  const tg = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const tg = planTargets(s, cyc);
   const slots = ['breakfast', 'lunch', 'dinner'].filter(m => s.meals[m]);
   const d = data.plan.days[day], n = dayNutrition(d), date = dayDate(day), act = s.fitness.week[day];
+  const ph = cyc ? cyc[day].phase : 'mid';
   const locks = Object.keys(data.locked).length;
   return <View>
     <Summary list={list} settings={s} />
-    <WeekStrip day={day} setDay={setDay} plan={data.plan} settings={s} targets={tg} />
+    <WeekStrip day={day} setDay={setDay} plan={data.plan} settings={s} targets={tg} cyc={cyc} />
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
       <H size={24}>{date.toLocaleDateString('en-ZA', { weekday: 'long' })} {date.getDate()} {date.toLocaleDateString('en-ZA', { month: 'long' })}</H>
       {tg && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: act !== 'rest' ? t.trainSoft : t.sunk, borderRadius: 0, paddingVertical: 4, paddingHorizontal: 10 }}>
         <Icon name="run" size={16} color={act !== 'rest' ? t.train : t.muted} /><T size={13} font="semi" color={act !== 'rest' ? t.train : t.muted}>{ACTIVITIES[act].label}</T></View>}
+      {ph !== 'mid' && <View style={{ backgroundColor: t.cycleSoft, paddingVertical: 4, paddingHorizontal: 10 }}><T size={13} color={t.cycle}>{CYCLE_LABELS[ph]}, day {cyc[day].day}</T></View>}
     </View>
+    {(ph === 'period' || ph === 'recovery') && <View style={{ borderLeftWidth: 2, borderColor: t.cycle, paddingLeft: 12, marginBottom: 12, gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}><H size={20}>{n.iron} mg</H><T muted size={13}>iron of about {IRON_TARGET_MG} mg</T></View>
+      <Meter value={n.iron} max={IRON_TARGET_MG} height={3} color={t.cycle} />
+      <T muted size={13}>Iron-rich meals are favoured on these days. Eating them with tomato, peppers or broccoli helps your body absorb the iron.</T>
+    </View>}
+    {ph === 'luteal' && <T muted size={13} style={{ marginBottom: 12 }}>{tg ? `Appetite often runs higher before a period, so today's target includes about ${LUTEAL_TOPUP_KCAL} kcal extra.` : 'Appetite often runs higher before a period. A filling dinner and a snack you enjoy are fine.'}</T>}
     {tg && <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
       {[['Protein', n.protein, tg.days[day].protein, 'g', 95], ['Energy', n.kcal, tg.days[day].kcal, 'kcal', 90]].map(([label, v, target, unit, okPct]) => {
         const pct = Math.min(100, (v / target) * 100);
@@ -257,7 +270,37 @@ function SwitchRow({ title, sub, value, onChange, big }) {
   </View>;
 }
 
-function FitnessScreen({ data, update, regenerate }) {
+function CycleSection({ cycle, setCycle, regenerate }) {
+  const t = useT();
+  const c = cycle || DEFAULT_CYCLE;
+  const [date, setDate] = useState(c.lastStart || '');
+  useEffect(() => { setDate(c.lastStart || ''); }, [c.lastStart]);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(new Date(date + 'T00:00:00')) && new Date(date + 'T00:00:00') <= new Date();
+  const set = patch => setCycle({ ...c, ...patch });
+  return <Section title="Cycle-aware planning" lead="For anyone who menstruates. Optional, and you can turn it off or clear it any time.">
+    <SwitchRow title="Plan around my cycle" sub={`Iron-rich meals on period days and just after, and about ${LUTEAL_TOPUP_KCAL} kcal extra on higher-appetite days before a period when training targets are on.`}
+      value={c.enabled} onChange={v => { set({ enabled: v }); if (v && c.lastStart) setTimeout(() => regenerate(true, true), 0); }} />
+    {c.enabled && <>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <Field label="Last period started (YYYY-MM-DD)">
+          <View style={{ borderBottomWidth: 1, borderColor: t.ink }}>
+            <TextInput value={date} onChangeText={setDate} placeholder="2026-11-01" placeholderTextColor={t.muted} autoCapitalize="none"
+              onEndEditing={() => valid && set({ lastStart: date })} onBlur={() => valid && set({ lastStart: date })}
+              style={{ paddingVertical: 8, color: t.ink, fontFamily: FONTS.body, fontSize: 17 }} accessibilityLabel="Date your last period started" />
+          </View>
+          {date.length >= 10 && !valid && <T size={12.5} color={t.bad}>Use a past date written as year-month-day, e.g. 2026-11-01.</T>}
+        </Field>
+        <Field label="Cycle length (days)"><NumInput value={c.length} onChange={v => set({ length: Math.min(45, Math.max(20, Number(v) || 28)) })} /></Field>
+        <Field label="Period length (days)"><NumInput value={c.periodDays} onChange={v => set({ periodDays: Math.min(10, Math.max(2, Number(v) || 5)) })} /></Field>
+      </View>
+      <Btn kind="primary" title="Re-plan the week" onPress={() => regenerate(true)} style={{ alignSelf: 'flex-start' }} />
+    </>}
+    <T muted size={13}>Your cycle dates stay on this device only. Tafel never sends them to our servers, so they won't sync to your other devices. This is general guidance, not medical advice; see a doctor about very heavy periods or ongoing tiredness.</T>
+    {(c.enabled || c.lastStart) && <Btn title="Clear cycle data from this device" onPress={() => { setCycle(DEFAULT_CYCLE); setTimeout(() => regenerate(true, true), 0); }} />}
+  </Section>;
+}
+
+function FitnessScreen({ data, update, regenerate, cycle, setCycle }) {
   const t = useT();
   const f = data.settings.fitness;
   const setF = (k, v) => update(d => { d.settings.fitness[k] = v; });
@@ -266,6 +309,7 @@ function FitnessScreen({ data, update, regenerate }) {
   return <View>
     <Section><SwitchRow big title="Plan around training" sub="Bigger portions on training days, a daily protein target, and protein snacks on the list when meals fall short."
       value={f.enabled} onChange={v => { setF('enabled', v); if (v) setTimeout(() => regenerate(true, true), 0); }} /></Section>
+    <CycleSection cycle={cycle} setCycle={setCycle} regenerate={regenerate} />
     {!f.enabled ? <T muted size={13}>Targets apply to one person in the household. Everyone else eats standard portions.</T> : <>
       <Section title="Daily targets">
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -349,7 +393,7 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
 }
 
 // ---------- sheet ----------
-function Sheet({ sheet, data, update, priceFeed, close, toast }) {
+function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
   const t = useT();
   const { width } = useWindowDimensions();
   if (!sheet) return null;
@@ -358,13 +402,13 @@ function Sheet({ sheet, data, update, priceFeed, close, toast }) {
   if (sheet.type === 'swap') {
     const [d, slot] = sheet.key.split(':');
     const cur = buildList(data.plan, s, priceFeed, data.overrides).total;
-    const alts = alternatives(data.plan, +d, slot, s, priceFeed, data.overrides);
+    const alts = alternatives(data.plan, +d, slot, s, priceFeed, data.overrides, cyc);
     body = <><H size={22}>Swap {DAYS[d]} {slot}</H><T muted size={14} style={{ marginBottom: 10 }}>Sorted by what it does to this week's total.</T>
       {alts.map(a => {
         const dl = Math.round(a.total - cur);
-        return <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s); x.locked[sheet.key] = a.recipe.id; }); close(); toast('Meal swapped and kept'); }}
+        return <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s, cyc); x.locked[sheet.key] = a.recipe.id; }); close(); toast('Meal swapped and kept'); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderColor: t.line }}>
-          <View style={{ flex: 1 }}><T font="semi">{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal</T></View>
+          <View style={{ flex: 1 }}><T font="semi">{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal{cyc && (cyc[+d].phase === 'period' || cyc[+d].phase === 'recovery') ? `, ${a.nutrition.iron} mg iron` : ''}</T></View>
           <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
         </TouchableOpacity>;
       })}</>;
@@ -478,6 +522,12 @@ function Main() {
   const [user, setUser] = useState(undefined);
   const [guest, setGuest] = useState(!firebaseReady); // without Firebase (local dev) there are no accounts or billing
   const [account, setAccount] = useState(undefined);
+  // Cycle data is health information: kept on this device only, never in the cloud.
+  const cycleRef = useRef(DEFAULT_CYCLE);
+  const [cycle, setCycleRaw] = useState(DEFAULT_CYCLE);
+  useEffect(() => { AsyncStorage.getItem('tafel-cycle').then(v => { if (v) try { { const c = { ...DEFAULT_CYCLE, ...JSON.parse(v) }; cycleRef.current = c; setCycleRaw(c); } } catch (e) {} }).catch(() => {}); }, []);
+  const setCycle = c => { cycleRef.current = c; setCycleRaw(c); AsyncStorage.setItem('tafel-cycle', JSON.stringify(c)).catch(() => {}); };
+  const cyc = cycleWeek(cycle, weekStart());
   const [data, setData] = useState(null);
   const [priceFeed, setPriceFeed] = useState(null);
   const [tab, setTabRaw] = useState('plan');
@@ -514,7 +564,7 @@ function Main() {
   const update = fn => setData(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); saveState(user, next); return next; });
   const regenerate = (keepLocks, quiet) => {
     setData(prev => {
-      const res = generatePlan(prev.settings, priceFeed, prev.overrides, { locked: keepLocks ? prev.locked : {} });
+      const res = generatePlan(prev.settings, priceFeed, prev.overrides, { locked: keepLocks ? prev.locked : {}, cycle: cycleWeek(cycleRef.current, weekStart()) });
       const next = { ...prev, plan: res.plan, checked: {}, locked: keepLocks ? prev.locked : {} };
       saveState(user, next);
       if (!quiet) setTimeout(() => toast(res.warning || (res.overBudget ? 'This is the cheapest week we could find, and it\'s still over budget' : 'New week planned')), 0);
@@ -550,13 +600,13 @@ function Main() {
             <T size={13.5}>{ent.daysLeft} {ent.daysLeft === 1 ? 'day' : 'days'} left in your free month. Subscribe in Settings to keep going.</T></TouchableOpacity>}
           {ent.kind === 'past_due' && <TouchableOpacity onPress={() => setTab('settings')} style={{ backgroundColor: theme.badSoft, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 }}>
             <T size={13.5} color={theme.bad}>Your last payment didn't go through. Update your card in Settings.</T></TouchableOpacity>}
-          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} />}
+          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} cyc={cyc} />}
           {tab === 'list' && <ListScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} toast={toast} />}
-          {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} />}
+          {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} cycle={cycle} setCycle={setCycle} />}
           {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={doSignOut} ent={ent} billing={billing} />}
         </ScrollView>
         {!wide && <TabBar tab={tab} setTab={setTab} />}
-        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} />
+        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} cyc={cyc} />
         {msg && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[{ position: 'absolute', bottom: wide ? 32 : 96, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 0 }, shadow]}>
           <T font="semi" size={14} color={theme.bg}>{msg}</T></View>}
       </>}
