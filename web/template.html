@@ -2,273 +2,509 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e6b4a">
 <title>Weekly Meal Planner SA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f5f1;--card:#fff;--ink:#1d2321;--muted:#68716d;--line:#e4e2dc;--brand:#1f7a4d;--brand-soft:#e3f1e9;--warn:#b54708;--warn-soft:#fdf0e2;--bad:#b42318;--r:14px}
-@media (prefers-color-scheme:dark){:root{--bg:#121514;--card:#1b1f1e;--ink:#eef1ef;--muted:#9aa39f;--line:#2b302e;--brand:#4cc08a;--brand-soft:#1d3329;--warn:#f2a65a;--warn-soft:#3a2a1a;--bad:#f97066}}
+/* Layout idea: one focused day at a time, picked from a week strip; the grocery list is a till slip.
+   Spinach green = action, butternut = training load, chilli = over budget. */
+:root{
+  --bg:#eef2ef; --surface:#ffffff; --sunk:#e4eae6; --ink:#13201a; --muted:#5b6a62; --line:#d6ded9;
+  --accent:#1e6b4a; --accent-ink:#ffffff; --accent-soft:#dbeee4;
+  --train:#c9821f; --train-soft:#f8ead3;
+  --bad:#c0392b; --bad-soft:#f9e1de;
+  --paper:#fffdf8; --paper-ink:#24282a; --paper-line:#cfcac0;
+  --font-display:"Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --font-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-slip:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r-lg:20px; --r-md:14px; --r-sm:10px;
+  --shadow:0 1px 2px rgba(19,32,26,.06), 0 8px 24px -12px rgba(19,32,26,.18);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1512; --surface:#16201b; --sunk:#1c2822; --ink:#e8efeb; --muted:#94a39b; --line:#26332c;
+  --accent:#4fbf88; --accent-ink:#06231a; --accent-soft:#1a3529;
+  --train:#efb35a; --train-soft:#3a2c17; --bad:#f0806f; --bad-soft:#3d1f1b;
+  --paper:#f4f0e6; --paper-ink:#24282a; --paper-line:#c9c3b6;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1512; --surface:#16201b; --sunk:#1c2822; --ink:#e8efeb; --muted:#94a39b; --line:#26332c;
+  --accent:#4fbf88; --accent-ink:#06231a; --accent-soft:#1a3529;
+  --train:#efb35a; --train-soft:#3a2c17; --bad:#f0806f; --bad-soft:#3d1f1b;
+  --paper:#f4f0e6; --paper-ink:#24282a; --paper-line:#c9c3b6;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6); color-scheme:dark}
+
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.4;padding-bottom:84px}
-header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 10px;border-bottom:1px solid var(--line)}
-header h1{margin:0;font-size:18px;font-weight:700}
-header .sub{color:var(--muted);font-size:13px;margin-top:2px}
-main{max-width:720px;margin:0 auto;padding:12px 14px}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);z-index:6;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;border:0;background:none;padding:10px 4px 12px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
-nav button .ic{display:block;font-size:20px;line-height:1.2}
-nav button.on{color:var(--brand);font-weight:600}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
-.row{display:flex;align-items:center;gap:10px}
-.between{justify-content:space-between}
-.muted{color:var(--muted)}.small{font-size:13px}
-.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 13px;font:inherit;font-weight:500;cursor:pointer}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-.btn.sm{padding:5px 9px;font-size:13px}
-.btn:disabled{opacity:.5}
-.pill{display:inline-block;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:600;background:var(--brand-soft);color:var(--brand)}
-.pill.warn{background:var(--warn-soft);color:var(--warn)}
-.total{font-size:28px;font-weight:700;letter-spacing:-.5px}
-.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:8px}
-.bar i{display:block;height:100%;background:var(--brand)}
-.bar.over i{background:var(--warn)}
-.day h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
-.slot{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
-.slot:first-of-type{border-top:0}
-.slot .lbl{width:68px;flex:none;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.slot .nm{flex:1;min-width:0}
-.slot .nm b{font-weight:500;display:block}
-.slot .nm span{font-size:12px;color:var(--muted)}
-.icon-btn{border:0;background:none;font-size:17px;padding:6px;cursor:pointer;color:var(--muted);border-radius:8px}
-.icon-btn.on{color:var(--brand)}
-.aisle{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px;font-weight:600}
-.item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
-.item input{width:20px;height:20px;accent-color:var(--brand)}
-.item .nm{flex:1}
-.item.done .nm{text-decoration:line-through;color:var(--muted)}
-.item a{font-size:13px;color:var(--brand);text-decoration:none;white-space:nowrap}
-label.f{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-input[type=number],input[type=text],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:13px;background:var(--card);color:var(--ink);cursor:pointer}
-.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stores{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
-.store{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer;background:var(--card);color:var(--ink);text-align:left;font:inherit}
-.store b{display:block;font-size:16px}
-.store.on{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--card);width:100%;max-width:720px;max-height:80vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
-.sheet h2{margin:0 0 10px;font-size:17px}
-.alt{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
-.nut{font-size:12px;color:var(--muted)}
-.ok{color:var(--brand)}.low{color:var(--warn)}
-.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;z-index:30}
-textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:10px;font:13px ui-monospace,monospace;background:var(--card);color:var(--ink)}
-.empty{text-align:center;padding:30px 10px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td{padding:6px 4px;border-bottom:1px solid var(--line)}
-td input{width:90px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--font-body);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+svg.i{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.muted{color:var(--muted)}
+
+/* Shell */
+.shell{max-width:760px;margin:0 auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 0 10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.brand h1{font-size:17px;font-weight:700}
+.brand p{margin:0;font-size:12.5px;color:var(--muted)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.tabs-inner{display:flex;width:100%;max-width:520px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:6px 0;border-radius:12px;color:var(--muted);font-size:12px;font-weight:600}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"] .tab-ic{background:var(--accent-soft)}
+.tab-ic{width:52px;height:30px;border-radius:99px;display:grid;place-items:center;transition:background .2s}
+@media (min-width:820px){
+  .tabs{position:static;background:none;backdrop-filter:none;border:0;padding:0;justify-content:flex-end}
+  .tabs-inner{background:var(--sunk);border-radius:99px;padding:4px;width:auto}
+  .tab{flex-direction:row;gap:6px;padding:7px 14px;font-size:13.5px;border-radius:99px}
+  .tab-ic{width:auto;height:auto;background:none!important}
+  .tab[aria-current="page"]{background:var(--surface);box-shadow:var(--shadow)}
+  .shell{padding-bottom:48px}
+  .top{padding-top:22px;padding-bottom:18px}
+}
+
+/* Budget summary */
+.summary{background:var(--surface);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow);display:grid;gap:14px}
+.sum-row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sum-label{font-size:13px;color:var(--muted)}
+.sum-total{font:800 40px/1 var(--font-display);letter-spacing:-.03em}
+.sum-total small{font:600 15px var(--font-body);color:var(--muted);letter-spacing:0;margin-left:4px}
+.status{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;padding:5px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.status.over{background:var(--bad-soft);color:var(--bad)}
+.meter{height:10px;border-radius:99px;background:var(--sunk);position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--accent);transition:width .4s ease}
+.meter.over i{background:var(--bad)}
+.hint{font-size:13.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.hint b{color:var(--ink);font-weight:600}
+
+/* Week strip */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:18px 0 14px}
+.day-btn{border:1px solid transparent;background:var(--surface);border-radius:var(--r-md);padding:9px 0 8px;display:grid;justify-items:center;gap:2px;position:relative}
+.day-btn .dn{font-size:12px;color:var(--muted);font-weight:600}
+.day-btn .dd{font:700 19px/1.1 var(--font-display)}
+.day-btn .dot{width:6px;height:6px;border-radius:99px;background:transparent;margin-top:3px}
+.day-btn.train .dot{background:var(--train)}
+.day-btn.short .dot{box-shadow:0 0 0 2px var(--bad-soft);background:var(--bad)}
+.day-btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.day-btn[aria-pressed="true"] .dn{color:color-mix(in srgb,var(--bg) 70%,transparent)}
+.day-btn.today:not([aria-pressed="true"]){border-color:var(--line)}
+
+/* Day panel */
+.day-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.day-head h2{font-size:24px;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:13px;font-weight:600;background:var(--sunk);color:var(--muted)}
+.badge.train{background:var(--train-soft);color:var(--train)}
+.targets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.target{background:var(--surface);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:6px}
+.target .t-top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.target .t-val{font:700 20px var(--font-display)}
+.target .t-val span{font:500 13px var(--font-body);color:var(--muted)}
+.mini{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.mini i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.mini.low i{background:var(--train)}
+.meals{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+.meal{display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:center;padding:14px 12px 14px 16px;border-top:1px solid var(--line)}
+.meal:first-child{border-top:0}
+.meal-when{font-size:13px;color:var(--muted);font-weight:600}
+.meal-main{border:0;background:none;text-align:left;padding:0;min-width:0;display:grid;gap:3px}
+.meal-name{font-weight:600;font-size:16px;line-height:1.3}
+.meal-meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.meal-meta span{display:inline-flex;align-items:center;gap:4px}
+.meal-meta svg.i{width:14px;height:14px}
+.portion{color:var(--train);font-weight:600}
+.meal-actions{display:flex;gap:2px}
+.icon-btn{width:38px;height:38px;border-radius:12px;border:0;background:none;color:var(--muted);display:grid;place-items:center}
+.icon-btn:hover{background:var(--sunk);color:var(--ink)}
+.icon-btn[aria-pressed="true"]{color:var(--accent);background:var(--accent-soft)}
+@media (max-width:560px){.meal{grid-template-columns:1fr auto;row-gap:4px;padding:14px 10px 14px 16px}.meal-when{grid-column:1/-1;font-size:12.5px}.snacks{grid-template-columns:1fr}}
+.snacks{display:grid;grid-template-columns:76px 1fr;gap:12px;padding:12px 16px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--train-soft) 45%,var(--surface))}
+.snacks .meal-when{color:var(--train)}
+.snack-list{display:flex;flex-wrap:wrap;gap:6px}
+.snack-list span{font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px 9px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:11px 16px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn svg.i{width:18px;height:18px}
+.note{font-size:13px;color:var(--muted);margin:14px 2px 0;max-width:62ch}
+
+/* Store chooser */
+.seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:7px 12px;font-size:13.5px;font-weight:600;display:flex;gap:6px;align-items:baseline}
+.seg button span{font-weight:500;color:var(--muted);font-size:12.5px}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.seg button[aria-pressed="true"] span{color:color-mix(in srgb,var(--bg) 70%,transparent)}
+
+/* Till slip */
+.slip-wrap{margin-top:16px;filter:drop-shadow(0 10px 18px rgba(19,32,26,.14))}
+.slip{background:var(--paper);color:var(--paper-ink);padding:22px 20px 18px;font:400 13.5px/1.55 var(--font-slip);position:relative;
+  -webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%;padding-bottom:26px}
+.slip-head{text-align:center;display:grid;gap:2px;padding-bottom:12px;border-bottom:1px dashed var(--paper-line)}
+.slip-store{font:600 16px var(--font-slip);letter-spacing:.06em}
+.slip-sub{font-size:12px;color:#6b6f70}
+.slip-aisle{margin:14px 0 4px;font-weight:600;font-size:12.5px;color:#6b6f70}
+.slip-item{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:4px 0}
+.slip-item input{appearance:none;width:16px;height:16px;border:1.5px solid #8b8e8f;border-radius:4px;margin:2px 0 0;display:grid;place-items:center;background:transparent}
+.slip-item input:checked{background:var(--paper-ink);border-color:var(--paper-ink)}
+.slip-item input:checked::after{content:"";width:8px;height:4px;border:2px solid var(--paper);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.slip-item.done .s-name{text-decoration:line-through;color:#8b8e8f}
+.s-name{display:block}
+.s-detail{display:flex;gap:10px;font-size:12px;color:#6b6f70;flex-wrap:wrap}
+.s-detail a{color:#1e6b4a;text-decoration:underline;text-underline-offset:2px}
+.s-price{white-space:nowrap;text-align:right}
+.slip-total{display:flex;justify-content:space-between;border-top:1px dashed var(--paper-line);margin-top:12px;padding-top:12px;font-weight:600;font-size:16px}
+.slip-foot{display:flex;justify-content:space-between;font-size:12px;color:#6b6f70;margin-top:4px}
+.slip-pantry{margin-top:14px;padding-top:10px;border-top:1px dashed var(--paper-line);font-size:12.5px;color:#6b6f70}
+
+/* Compare chart */
+.compare{background:var(--surface);border-radius:var(--r-lg);padding:16px 18px;margin-top:16px;display:grid;gap:10px}
+.compare h3{font-size:16px;font-weight:700}
+.bar-row{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:13.5px}
+.bar-row .track{height:12px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.bar-row .track i{display:block;height:100%;background:color-mix(in srgb,var(--muted) 45%,transparent);border-radius:99px}
+.bar-row.cur .track i{background:var(--accent)}
+.bar-row.cur{font-weight:600}
+.bar-row .v{text-align:right}
+@media (max-width:420px){.bar-row{grid-template-columns:96px 1fr 62px}}
+
+/* Forms */
+.section{background:var(--surface);border-radius:var(--r-lg);padding:18px;margin-bottom:14px;display:grid;gap:14px}
+.section h2{font-size:18px;font-weight:700}
+.section p.lead{margin:-8px 0 0;color:var(--muted);font-size:13.5px;max-width:60ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.field input,.field select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:15px}
+.field input:focus,.field select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.input-affix{position:relative}
+.input-affix span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600}
+.input-affix input{padding-left:28px}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+.stepper button{width:44px;height:44px;border:0;background:none;font-size:20px;color:var(--muted)}
+.stepper output{flex:1;text-align:center;font-weight:700;font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 13px;font-size:14px;font-weight:500;display:inline-flex;gap:6px;align-items:center}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip[aria-pressed="true"]::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--accent)}
+.switch-row{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.switch-row div{display:grid;gap:2px}
+.switch-row small{color:var(--muted);font-size:13px}
+.switch{appearance:none;width:48px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none;transition:background .2s;margin:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:99px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.switch:checked{background:var(--accent)}
+.switch:checked::after{transform:translateX(20px)}
+.train-grid{display:grid;gap:8px}
+.train-row{display:grid;grid-template-columns:44px 1fr 86px;gap:10px;align-items:center}
+.train-row b{font-weight:600}
+.train-row select{padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);width:100%}
+.train-row .k{text-align:right;font-size:13px;color:var(--muted)}
+.big-targets{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.big-target{background:var(--sunk);border-radius:var(--r-md);padding:14px}
+.big-target .v{font:800 30px/1.1 var(--font-display);letter-spacing:-.02em}
+.big-target .l{font-size:13px;color:var(--muted)}
+.price-table{display:grid;gap:0;max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-md)}
+.price-row{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+.price-row:first-child{border-top:0}
+.price-row input{padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);width:100%;text-align:right}
+.price-row .aisle-h{grid-column:1/-1;font-weight:700;font-size:13px;color:var(--muted);padding-top:6px}
+
+/* Sheet */
+.sheet-bg{position:fixed;inset:0;z-index:40;background:rgba(10,18,14,.45);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s ease}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:86vh;overflow:auto;border-radius:24px 24px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom));animation:up .24s cubic-bezier(.2,.8,.2,1)}
+.grab{width:40px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 14px}
+.sheet h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.sheet .sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+.sheet h3{font-size:15px;margin:18px 0 8px}
+.ing-list,.steps{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.ing-list li{display:flex;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.ing-list li span{color:var(--muted)}
+.steps{counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:8px}
+.steps li::before{content:counter(s);width:24px;height:24px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;display:grid;place-items:center}
+.alt{width:100%;border:0;background:none;display:grid;grid-template-columns:1fr auto;gap:10px;text-align:left;padding:12px 4px;border-bottom:1px solid var(--line);align-items:center}
+.alt:hover{background:var(--sunk)}
+.alt b{font-weight:600}
+.alt small{display:block;color:var(--muted);font-size:13px}
+.delta{font-weight:600;font-size:13.5px;white-space:nowrap}
+.delta.up{color:var(--bad)}.delta.down{color:var(--accent)}
+.sheet textarea{width:100%;min-height:260px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:12px;font:13px/1.5 var(--font-slip);color:var(--ink)}
+@media (min-width:820px){.sheet-bg{align-items:center}.sheet{border-radius:24px;max-height:80vh;padding-top:22px}.grab{display:none}}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:var(--shadow);animation:up .2s ease}
+@keyframes up{from{transform:translateY(16px);opacity:0}}
+@keyframes fade{from{opacity:0}}
+.toast{animation-name:toastin}@keyframes toastin{from{opacity:0;transform:translate(-50%,8px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<header><h1>Weekly Meal Planner SA</h1><div class="sub" id="sub">Budget meals, grocery list &amp; fitness targets</div></header>
-<main id="app"></main>
-<nav id="nav"></nav>
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 11h14l-1.4 7.2A2 2 0 0 1 15.6 20H8.4a2 2 0 0 1-2-1.8L5 11Z"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></svg></div>
+      <div><h1>Weekly Meal Planner</h1><p id="sub"></p></div>
+    </div>
+    <nav class="tabs" aria-label="Sections"><div class="tabs-inner" id="nav"></div></nav>
+  </header>
+  <main id="app"></main>
+</div>
 <script>
 /*__CORE__*/
 
-// ---------------- App state ----------------
-const TABS = [['plan','🍽️','Plan'],['list','🛒','List'],['fitness','💪','Fitness'],['settings','⚙️','Settings']];
-let state = { tab: 'plan', settings: mergeSettings(null), plan: null, locked: {}, overrides: {}, checked: {} };
-let priceFeed = null, db = null, userId = null, saveTimer = null, sheet = null;
-const LS_KEY = 'mealplanner-sa-v1';
+// ---------------- Icons ----------------
+const IC={
+  plan:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  list:'<path d="M5 11h14l-1.4 7.2A2 2 0 0 1 15.6 20H8.4a2 2 0 0 1-2-1.8L5 11Z"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/>',
+  fitness:'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>',
+  settings:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  swap:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>',
+  protein:'<path d="M12 3c3 4 5 6.5 5 10a5 5 0 0 1-10 0c0-3.5 2-6 5-10Z"/>',
+  refresh:'<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  text:'<path d="M5 6h14M5 10h14M5 14h9M5 18h6"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  arrow:'<path d="M7 17 17 7M9 7h8v8"/>',
+  run:'<circle cx="14" cy="4.5" r="1.8"/><path d="m8 21 3-6 3 2v4M6 12l3-4 4 1 2 3 3 1"/>',
+};
+const icon=(n,cls='i')=>`<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
 
+// ---------------- State ----------------
+const TABS=[['plan','Plan'],['list','Groceries'],['fitness','Fitness'],['settings','Settings']];
+let state={tab:'plan',day:todayIdx(),settings:mergeSettings(null),plan:null,locked:{},overrides:{},checked:{}};
+let priceFeed=null,db=null,userId=null,saveTimer=null,sheet=null,lastFocus=null;
+const LS_KEY='mealplanner-sa-v1';
+
+function todayIdx(){return (new Date().getDay()+6)%7}
+function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-todayIdx());return d}
+function dayDate(i){const d=weekStart();d.setDate(d.getDate()+i);return d}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function money(n){return 'R' + Math.round(n).toLocaleString('en-ZA')}
-function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
+function money(n){return 'R'+Math.round(n).toLocaleString('en-ZA').replace(/ /g,' ')}
+function money2(n){return 'R'+n.toFixed(2)}
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2400)}
+const shortStore=k=>({shoprite:'Shoprite',checkers:'Checkers',pnp:'Pick n Pay',spar:'Spar',woolworths:'Woolworths'}[k]);
+const plural=(n,w)=>n===1?`1 ${w}`:`${n} ${w==='person'?'people':w+'s'}`;
 
 function persisted(){return {settings:state.settings,plan:state.plan,locked:state.locked,overrides:state.overrides,checked:state.checked}}
 function save(){
   try{localStorage.setItem(LS_KEY,JSON.stringify(persisted()))}catch(e){}
-  if(!db||!userId) return;
+  if(!db||!userId)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{try{await db.doc('data/users/'+userId+'/state').set(JSON.parse(JSON.stringify(persisted())))}catch(e){console.warn('save failed',e)}},800);
 }
-function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(s)applySaved(s)}catch(e){}}
 function applySaved(s){state.settings=mergeSettings(s.settings);state.plan=s.plan||null;state.locked=s.locked||{};state.overrides=s.overrides||{};state.checked=s.checked||{}}
-
+function loadLocal(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(s)applySaved(s)}catch(e){}}
 function currentList(){return state.plan?buildList(state.plan,state.settings,priceFeed,state.overrides):null}
+function targets(){return state.settings.fitness.enabled?fitnessTargets(state.settings.fitness):null}
 
-function regenerate(keepLocks=true){
+function regenerate(keepLocks=true,quiet=false){
   const res=generatePlan(state.settings,priceFeed,state.overrides,{locked:keepLocks?state.locked:{}});
-  state.plan=res.plan;state.checked={};
-  if(!keepLocks)state.locked={};
+  state.plan=res.plan;state.checked={};if(!keepLocks)state.locked={};
   save();render();
-  if(res.warning)toast(res.warning);else if(res.overBudget)toast('Cheapest plan found is over budget');
+  if(quiet)return;
+  if(res.warning)toast(res.warning);
+  else if(res.overBudget)toast('This is the cheapest week we could find, and it\'s still over budget');
+  else toast('New week planned');
 }
 
-// ---------------- Views ----------------
+// ---------------- Pieces ----------------
 function renderNav(){
-  document.getElementById('nav').innerHTML=TABS.map(([id,ic,l])=>`<button class="${state.tab===id?'on':''}" data-tab="${id}"><span class="ic">${ic}</span>${l}</button>`).join('');
+  document.getElementById('nav').innerHTML=TABS.map(([id,l])=>`<button class="tab" data-tab="${id}" ${state.tab===id?'aria-current="page"':''}><span class="tab-ic">${icon(id)}</span>${l}</button>`).join('');
 }
 
-function budgetCard(list){
-  const b=state.settings.weeklyBudget, t=list.total, pct=Math.min(100,t/b*100), over=t>b;
-  const stores=Object.entries(STORES).map(([k,v])=>`<button class="store ${state.settings.store===k?'on':''}" data-store="${k}"><span class="muted">${esc(v.name)}</span><b>${money(list.byStore[k])}</b></button>`).join('');
-  return `<div class="card"><div class="row between"><div><div class="muted small">This week · ${esc(STORES[state.settings.store].name)}</div><div class="total">${money(t)}</div></div>
-  <span class="pill ${over?'warn':''}">${over?money(t-b)+' over':money(b-t)+' left'} of ${money(b)}</span></div>
-  <div class="bar ${over?'over':''}"><i style="width:${pct}%"></i></div>
-  <div class="stores">${stores}</div>
-  <div class="muted small" style="margin-top:8px">${priceFeed&&priceFeed.updatedAt?'Prices updated '+esc(new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'})):'Estimated prices'} · other stores estimated from a price index</div></div>`;
+function summary(list){
+  const s=state.settings,b=s.weeklyBudget,t=list.total,over=t>b;
+  const cheapest=Object.entries(list.byStore).sort((a,b)=>a[1]-b[1])[0];
+  const saving=list.byStore[s.store]-cheapest[1];
+  return `<section class="summary" aria-label="Budget">
+    <div class="sum-row">
+      <div><div class="sum-label">Groceries this week at ${shortStore(s.store)}</div><div class="sum-total">${money(t)}<small>of ${money(b)}</small></div></div>
+      <span class="status ${over?'over':''}">${over?money(t-b)+' over budget':money(b-t)+' to spare'}</span>
+    </div>
+    <div class="meter ${over?'over':''}" role="meter" aria-valuemin="0" aria-valuemax="${b}" aria-valuenow="${Math.round(t)}" aria-label="Spend against budget"><i style="width:${Math.min(100,t/b*100)}%"></i></div>
+    ${saving>5?`<div class="hint">${icon('list')}<span><b>${shortStore(cheapest[0])}</b> would be about ${money(saving)} cheaper for this list.</span></div>`:`<div class="hint">${icon('check')}<span>${shortStore(s.store)} is the cheapest option for this list.</span></div>`}
+  </section>`;
+}
+
+function dayStatus(i,tg){
+  const d=state.plan.days[i],n=dayNutrition(d);
+  const act=state.settings.fitness.week[i];
+  return {n,train:tg&&act!=='rest',short:tg&&n.protein<tg.days[i].protein-5};
 }
 
 function renderPlan(){
-  if(!state.plan) return `<div class="card empty"><h2>Plan your week</h2><p class="muted">Set your household, budget and diet in Settings, then generate a 7-day plan with a costed grocery list.</p><button class="btn primary" data-act="gen">Generate my week</button> <button class="btn" data-tab="settings">Settings</button></div>`;
-  const list=currentList(), s=state.settings, targets=s.fitness.enabled?fitnessTargets(s.fitness):null;
+  const s=state.settings,tg=targets(),list=currentList();
   const slots=['breakfast','lunch','dinner'].filter(m=>s.meals[m]);
-  let h=budgetCard(list)+`<div class="row" style="margin-bottom:12px;gap:8px"><button class="btn primary" data-act="gen">↻ New plan</button><button class="btn" data-act="genall">Reset locks</button></div>`;
-  state.plan.days.forEach((d,i)=>{
-    const n=dayNutrition(d);
-    let nut='';
-    if(targets){const t=targets.days[i];nut=`<span class="nut">${esc(ACTIVITIES[t.activity].label)} · <span class="${n.protein>=t.protein-5?'ok':'low'}">${n.protein}/${t.protein} g protein</span> · ${n.kcal}/${t.kcal} kcal</span>`}
-    else nut=`<span class="nut">${n.protein} g protein · ${n.kcal} kcal per person</span>`;
-    h+=`<div class="card day"><h3>${DAYS[i]} ${nut}</h3>`;
-    for(const m of slots){
-      const r=d[m]&&recipeById(d[m]);
-      const key=i+':'+m, lk=!!state.locked[key];
-      if(!r){h+=`<div class="slot"><span class="lbl">${m}</span><span class="nm muted">No matching recipe</span></div>`;continue}
-      const rn=recipeNutrition(r);
-      h+=`<div class="slot"><span class="lbl">${m}</span><div class="nm" data-recipe="${r.id}" style="cursor:pointer"><b>${esc(r.name)}</b><span>${r.mins} min · ${Math.round(rn.protein*(d.portion||1))} g protein${d.portion&&d.portion!==1?' · your portion '+d.portion+'×':''}</span></div>
-      <button class="icon-btn ${lk?'on':''}" title="Lock" data-lock="${key}">${lk?'🔒':'🔓'}</button><button class="icon-btn" title="Swap" data-swap="${key}">⇄</button></div>`;
-    }
-    if(d.snacks&&d.snacks.length)h+=`<div class="slot"><span class="lbl">Snacks</span><div class="nm"><span>${d.snacks.map(x=>esc(recipeById(x).name)).join(' · ')}</span></div></div>`;
-    h+='</div>';
-  });
+  const di=state.day,d=state.plan.days[di],n=dayNutrition(d),date=dayDate(di);
+  let h=summary(list);
+  h+=`<div class="week" role="group" aria-label="Choose a day">`+DAYS.map((nm,i)=>{const st=dayStatus(i,tg);return `<button class="day-btn ${st.train?'train':''} ${st.short?'short':''} ${i===todayIdx()?'today':''}" data-day="${i}" aria-pressed="${i===di}" aria-label="${nm} ${dayDate(i).getDate()}${st.train?', training day':''}"><span class="dn">${nm}</span><span class="dd">${dayDate(i).getDate()}</span><span class="dot"></span></button>`}).join('')+`</div>`;
+  const act=s.fitness.week[di];
+  h+=`<div class="day-head"><h2>${date.toLocaleDateString('en-ZA',{weekday:'long'})} ${date.getDate()} ${date.toLocaleDateString('en-ZA',{month:'long'})}</h2>${tg?`<span class="badge ${act!=='rest'?'train':''}">${icon('run')}${esc(ACTIVITIES[act].label)}</span>`:''}</div>`;
+  if(tg){
+    const t=tg.days[di],pp=Math.min(100,n.protein/t.protein*100),kp=Math.min(100,n.kcal/t.kcal*100);
+    h+=`<div class="targets">
+      <div class="target"><div class="t-top"><span>Protein</span><span>${Math.round(pp)}%</span></div><div class="t-val">${n.protein} g <span>of ${t.protein} g</span></div><div class="mini ${pp<95?'low':''}"><i style="width:${pp}%"></i></div></div>
+      <div class="target"><div class="t-top"><span>Energy</span><span>${Math.round(kp)}%</span></div><div class="t-val">${n.kcal.toLocaleString('en-ZA')} <span>of ${t.kcal.toLocaleString('en-ZA')} kcal</span></div><div class="mini ${kp<90?'low':''}"><i style="width:${kp}%"></i></div></div></div>`;
+  }
+  h+=`<div class="meals">`;
+  for(const m of slots){
+    const r=d[m]&&recipeById(d[m]),key=di+':'+m,lk=!!state.locked[key];
+    const when=m[0].toUpperCase()+m.slice(1);
+    if(!r){h+=`<div class="meal"><span class="meal-when">${when}</span><span class="muted">No recipe fits your filters</span><span></span></div>`;continue}
+    const rn=recipeNutrition(r),p=d.portion||1;
+    h+=`<div class="meal"><span class="meal-when">${when}</span>
+      <button class="meal-main" data-recipe="${r.id}"><span class="meal-name">${esc(r.name)}</span>
+      <span class="meal-meta"><span>${icon('clock')}${r.mins} min</span><span>${icon('protein')}${Math.round(rn.protein*p)} g protein</span>${p!==1?`<span class="portion">Your portion ×${p}</span>`:''}</span></button>
+      <span class="meal-actions"><button class="icon-btn" data-lock="${key}" aria-pressed="${lk}" aria-label="${lk?'Unlock':'Keep'} ${esc(r.name)} when re-planning" title="${lk?'Kept when re-planning':'Keep when re-planning'}">${icon(lk?'lock':'unlock')}</button><button class="icon-btn" data-swap="${key}" aria-label="Swap ${when.toLowerCase()}" title="Swap meal">${icon('swap')}</button></span></div>`;
+  }
+  if(d.snacks&&d.snacks.length)h+=`<div class="snacks"><span class="meal-when">Snacks</span><div class="snack-list">${d.snacks.map(x=>`<span>${esc(recipeById(x).name)}</span>`).join('')}</div></div>`;
+  h+=`</div><div class="actions"><button class="btn primary" data-act="gen">${icon('refresh')}Plan a new week</button>${Object.keys(state.locked).length?`<button class="btn ghost" data-act="genall">Clear ${plural(Object.keys(state.locked).length,'kept meal')}</button>`:''}</div>`;
+  if(!tg)h+=`<p class="note">${n.protein} g protein and ${n.kcal.toLocaleString('en-ZA')} kcal per person today. Turn on Fitness to plan around your training.</p>`;
   return h;
 }
 
 function renderList(){
-  if(!state.plan) return `<div class="card empty"><p class="muted">Generate a plan first.</p><button class="btn primary" data-act="gen">Generate my week</button></div>`;
-  const list=currentList(), s=state.settings;
-  let h=budgetCard(list);
-  h+=`<div class="card"><div class="row between"><b>Shop at ${esc(STORES[s.store].name)}</b><span class="muted small">Tap “find” to open the item on the store's site</span></div>
-  <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" data-act="copy">Copy list</button><button class="btn" data-act="showtext">Show as text</button><button class="btn" data-act="uncheck">Uncheck all</button></div>`;
+  const list=currentList(),s=state.settings;
+  const main=list.items.filter(i=>s.includeStaples||!i.staple),staples=list.items.filter(i=>i.staple&&!s.includeStaples);
+  const left=main.filter(i=>!state.checked[i.id]).length;
+  let h=`<div class="seg" role="group" aria-label="Store">`+Object.keys(STORES).map(k=>`<button data-store="${k}" aria-pressed="${s.store===k}">${shortStore(k)} <span>${money(list.byStore[k])}</span></button>`).join('')+`</div>`;
+  h+=`<div class="actions"><button class="btn primary" data-act="copy">${icon('copy')}Copy list</button><button class="btn" data-act="showtext">${icon('text')}View as text</button>${Object.keys(state.checked).length?`<button class="btn ghost" data-act="uncheck">Untick all</button>`:''}</div>`;
+  const now=new Date();
+  h+=`<div class="slip-wrap"><div class="slip"><div class="slip-head"><div class="slip-store">${esc(STORES[s.store].name.toUpperCase())}</div><div class="slip-sub">Week of ${weekStart().toLocaleDateString('en-ZA',{day:'numeric',month:'short'})} · ${plural(s.householdSize,'person')}</div><div class="slip-sub">${left} of ${plural(main.length,'item')} still to get</div></div>`;
   let aisle='';
-  const main=list.items.filter(i=>s.includeStaples||!i.staple), staples=list.items.filter(i=>i.staple&&!s.includeStaples);
   for(const i of main){
-    if(i.aisle!==aisle){aisle=i.aisle;h+=`<div class="aisle">${esc(aisle)}</div>`}
+    if(i.aisle!==aisle){aisle=i.aisle;h+=`<div class="slip-aisle">${esc(aisle)}</div>`}
     const done=!!state.checked[i.id];
-    h+=`<div class="item ${done?'done':''}"><input type="checkbox" data-check="${i.id}" ${done?'checked':''}><div class="nm">${esc(i.name)} <span class="muted small">× ${i.packs} · need ${formatQty(i)}</span></div><span class="small">R${i.cost.toFixed(2)}</span><a href="${esc(storeSearchUrl(s.store,i))}" target="_blank" rel="noopener">find ↗</a></div>`;
+    h+=`<div class="slip-item ${done?'done':''}"><input type="checkbox" id="c-${i.id}" data-check="${i.id}" ${done?'checked':''}><label for="c-${i.id}"><span class="s-name">${i.packs>1?i.packs+' × ':''}${esc(i.name)}</span><span class="s-detail"><span>uses ${i.unit==='ea'?Math.ceil(i.qty-0.05):formatQty(i)}</span><a href="${esc(storeSearchUrl(s.store,i))}" target="_blank" rel="noopener" aria-label="Find ${esc(i.name)} at ${shortStore(s.store)}">find</a></span></label><span class="s-price">${money2(i.cost)}</span></div>`;
   }
-  if(staples.length){h+=`<div class="aisle">Check your pantry</div>`;for(const i of staples)h+=`<div class="item"><div class="nm muted">${esc(i.name)}</div><a href="${esc(storeSearchUrl(s.store,i))}" target="_blank" rel="noopener">find ↗</a></div>`}
-  h+=`</div><div class="card small muted">Store logins aren't connected: none of Checkers Sixty60, Pick n Pay asap! or Woolworths Dash offers an API for other apps. “Find” opens each product search on the store's own site, where you stay signed in.</div>`;
+  h+=`<div class="slip-total"><span>ESTIMATED TOTAL</span><span>${money2(list.total)}</span></div><div class="slip-foot"><span>Budget ${money(s.weeklyBudget)}</span><span>${list.total>s.weeklyBudget?money(list.total-s.weeklyBudget)+' over':money(s.weeklyBudget-list.total)+' under'}</span></div>`;
+  if(staples.length)h+=`<div class="slip-pantry">Check your cupboard for ${staples.map(i=>esc(i.name.replace(/ \(.*\)/,'').toLowerCase())).join(', ')}.</div>`;
+  h+=`</div></div>`;
+  const max=Math.max(...Object.values(list.byStore));
+  h+=`<section class="compare" aria-label="Store comparison"><h3>Same list at other stores</h3>`+Object.entries(list.byStore).sort((a,b)=>a[1]-b[1]).map(([k,v])=>`<div class="bar-row ${k===s.store?'cur':''}"><span>${shortStore(k)}</span><span class="track"><i style="width:${v/max*100}%"></i></span><span class="v">${money(v)}</span></div>`).join('')+`</section>`;
+  h+=`<p class="note">${priceFeed&&priceFeed.updatedAt?'Prices last refreshed '+new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA',{day:'numeric',month:'long'})+'. ':'Prices are estimates until the first monthly refresh. '}Other stores are estimated from a basket price index. Store accounts can't be linked because Sixty60, PnP asap! and Woolworths Dash don't offer that to other apps, so each item links to the store's own search.</p>`;
   return h;
 }
 
-function chipGroup(name,opts,selected){return `<div class="chips">${Object.entries(opts).map(([k,v])=>`<button class="chip ${selected.includes(k)?'on':''}" data-chip="${name}" data-val="${k}">${esc(v.label)}</button>`).join('')}</div>`}
+function chips(group,opts,sel){return `<div class="chips">${Object.entries(opts).map(([k,v])=>`<button class="chip" data-chip="${group}" data-val="${k}" aria-pressed="${sel.includes(k)}">${esc(v.label)}</button>`).join('')}</div>`}
 
 function renderSettings(){
   const s=state.settings;
-  let h=`<div class="card"><b>Household &amp; budget</b>
-  <div class="grid2"><div><label class="f">People eating</label><input type="number" min="1" max="12" data-set="householdSize" value="${s.householdSize}"></div>
-  <div><label class="f">Weekly budget (R)</label><input type="number" min="100" step="50" data-set="weeklyBudget" value="${s.weeklyBudget}"></div></div>
-  <label class="f">Main store</label><select data-set="store">${Object.entries(STORES).map(([k,v])=>`<option value="${k}" ${s.store===k?'selected':''}>${esc(v.name)}</option>`).join('')}</select>
-  <label class="f">Meals to plan</label><div class="chips">${['breakfast','lunch','dinner'].map(m=>`<button class="chip ${s.meals[m]?'on':''}" data-meal="${m}">${m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div>
-  <label class="f"><input type="checkbox" data-set="includeStaples" ${s.includeStaples?'checked':''}> Include pantry staples (oil, spices, flour) in the total</label></div>
-  <div class="card"><b>Dietary requirements</b><label class="f">Must avoid</label>${chipGroup('diets',DIETS,s.diets)}<label class="f">Preferences</label>${chipGroup('prefs',PREFERENCES,s.prefs)}
-  <p class="small muted">Halal: buy halal-certified meat. Boerewors is treated as containing pork. Stock cubes, oats and soy sauce are treated as containing gluten.</p></div>
-  <div class="card"><div class="row between"><b>Prices</b><span class="small muted">${priceFeed&&priceFeed.updatedAt?'Feed: '+esc(priceFeed.source||'')+' '+esc(new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA')):'Built-in estimates'}</span></div>
-  <p class="small muted">Base prices are Checkers. Type your own price to override it.</p><table>`;
-  for(const [id,ing] of Object.entries(INGREDIENTS)){
-    const base=priceOf(id,'checkers',priceFeed,null);
-    h+=`<tr><td>${esc(ing.name)}</td><td style="text-align:right"><input type="number" step="0.01" placeholder="${base.toFixed(2)}" data-price="${id}" value="${state.overrides[id]??''}"></td></tr>`;
+  let h=`<section class="section"><h2>Household and budget</h2><div class="fields">
+    <div class="field"><label id="l-hh">People eating</label><div class="stepper" role="group" aria-labelledby="l-hh"><button data-step="-1" aria-label="Fewer people">−</button><output>${s.householdSize}</output><button data-step="1" aria-label="More people">+</button></div></div>
+    <div class="field"><label for="f-budget">Weekly grocery budget</label><div class="input-affix"><span>R</span><input id="f-budget" type="number" inputmode="numeric" min="100" step="50" data-set="weeklyBudget" value="${s.weeklyBudget}"></div></div>
+    <div class="field"><label for="f-store">Where you shop</label><select id="f-store" data-set="store">${Object.keys(STORES).map(k=>`<option value="${k}" ${s.store===k?'selected':''}>${esc(STORES[k].name)}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Meals to plan</label><div class="chips">${['breakfast','lunch','dinner'].map(m=>`<button class="chip" data-meal="${m}" aria-pressed="${s.meals[m]}">${m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div></div>
+    <div class="switch-row"><div><label for="f-staples">Count pantry staples in the total</label><small>Oil, spices, flour, stock cubes and sauces</small></div><input class="switch" type="checkbox" id="f-staples" data-set="includeStaples" ${s.includeStaples?'checked':''}></div></section>`;
+  h+=`<section class="section"><h2>Dietary needs</h2><p class="lead">Recipes with anything you avoid are left out of every plan.</p><div class="field"><label>Avoid</label>${chips('diets',DIETS,s.diets)}</div><div class="field"><label>Lean towards</label>${chips('prefs',PREFERENCES,s.prefs)}</div>
+  <p class="lead" style="margin:0">For halal, buy halal-certified meat. Boerewors counts as containing pork; stock cubes, oats and soy sauce count as containing gluten.</p></section>`;
+  h+=`<section class="section"><h2>Your prices</h2><p class="lead">Base prices are Checkers. Type what you actually pay and the plan will use it.</p><div class="price-table">`;
+  let aisle='';
+  for(const [id,ing] of Object.entries(INGREDIENTS).sort((a,b)=>a[1].aisle.localeCompare(b[1].aisle))){
+    if(ing.aisle!==aisle){aisle=ing.aisle;h+=`<div class="price-row"><span class="aisle-h">${esc(aisle)}</span></div>`}
+    h+=`<div class="price-row"><label for="p-${id}">${esc(ing.name)}</label><input id="p-${id}" type="number" inputmode="decimal" step="0.01" placeholder="${priceOf(id,'checkers',priceFeed,null).toFixed(2)}" data-price="${id}" value="${state.overrides[id]??''}"></div>`;
   }
-  h+=`</table></div><div class="card small muted">${userId?'Saved to your account.':'Saved on this device.'}</div>`;
+  h+=`</div></section><p class="note">${userId?'Your settings and plans are saved to your Claude account.':'Your settings and plans are saved in this browser.'}</p>`;
   return h;
 }
 
 function renderFitness(){
   const f=state.settings.fitness;
-  let h=`<div class="card"><div class="row between"><b>Fitness mode</b><button class="chip ${f.enabled?'on':''}" data-fit-toggle>${f.enabled?'On':'Off'}</button></div>
-  <p class="small muted">Plans aim at your daily protein and calories, scale your portions on training days, and add protein snacks to the grocery list when meals fall short. Targets are for one person in the household.</p></div>`;
-  if(!f.enabled) return h;
+  let h=`<section class="section"><div class="switch-row"><div><label for="f-fit"><h2>Plan around training</h2></label><small>Bigger portions on training days, a daily protein target, and protein snacks on the list when meals fall short.</small></div><input class="switch" type="checkbox" id="f-fit" data-fit="enabled" ${f.enabled?'checked':''}></div></section>`;
+  if(!f.enabled)return h+`<p class="note">Targets apply to one person in the household. Everyone else eats standard portions.</p>`;
   const t=fitnessTargets(f);
-  h+=`<div class="card"><b>Your targets</b><div class="grid2" style="margin-top:8px"><div><div class="muted small">Protein / day</div><div class="total">${t.protein} g</div><div class="small muted">${t.perKg} g per kg</div></div><div><div class="muted small">Rest-day calories</div><div class="total">${t.restKcal}</div><div class="small muted">BMR ${t.bmr} kcal</div></div></div></div>
-  <div class="card"><b>Body &amp; goal</b><div class="grid2">
-  <div><label class="f">Weight (kg)</label><input type="number" data-fit="weightKg" value="${f.weightKg}"></div>
-  <div><label class="f">Height (cm)</label><input type="number" data-fit="heightCm" value="${f.heightCm}"></div>
-  <div><label class="f">Age</label><input type="number" data-fit="age" value="${f.age}"></div>
-  <div><label class="f">Sex (for calorie formula)</label><select data-fit="sex"><option value="male" ${f.sex==='male'?'selected':''}>Male</option><option value="female" ${f.sex==='female'?'selected':''}>Female</option></select></div></div>
-  <label class="f">Goal</label><select data-fit="goal">${Object.entries(GOALS).map(([k,v])=>`<option value="${k}" ${f.goal===k?'selected':''}>${esc(v.label)}</option>`).join('')}</select>
-  <div class="grid2"><div><label class="f">Protein target override (g/day)</label><input type="number" data-fit="proteinOverride" placeholder="${t.protein}" value="${f.proteinOverride??''}"></div>
-  <div><label class="f">Rest-day kcal override</label><input type="number" data-fit="kcalOverride" placeholder="${t.restKcal}" value="${f.kcalOverride??''}"></div></div>
-  <label class="f"><input type="checkbox" data-fit="snacks" ${f.snacks?'checked':''}> Add protein snacks to close gaps</label></div>
-  <div class="card"><b>Weekly training</b><p class="small muted">Training days get more food.</p>`;
-  DAYS.forEach((d,i)=>{h+=`<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span>${d}</span><select style="width:60%" data-week="${i}">${Object.entries(ACTIVITIES).map(([k,v])=>`<option value="${k}" ${f.week[i]===k?'selected':''}>${esc(v.label)}</option>`).join('')}</select><span class="small muted" style="width:70px;text-align:right">${t.days[i].kcal} kcal</span></div>`});
-  h+=`</div><div class="card"><button class="btn primary" data-act="gen">Re-plan with these targets</button></div><p class="small muted">Estimates only (Mifflin-St Jeor formula plus typical exercise burn), not medical advice.</p>`;
+  h+=`<section class="section"><h2>Daily targets</h2><div class="big-targets"><div class="big-target"><div class="v">${t.protein} g</div><div class="l">protein a day (${t.perKg} g per kg)</div></div><div class="big-target"><div class="v">${t.restKcal.toLocaleString('en-ZA')}</div><div class="l">kcal on a rest day</div></div></div></section>`;
+  h+=`<section class="section"><h2>Your week of training</h2><p class="lead">Training days get more food, sized to the session.</p><div class="train-grid">`+DAYS.map((d,i)=>`<div class="train-row"><b>${d}</b><select aria-label="${d} training" data-week="${i}">${Object.entries(ACTIVITIES).map(([k,v])=>`<option value="${k}" ${f.week[i]===k?'selected':''}>${esc(v.label)}</option>`).join('')}</select><span class="k">${t.days[i].kcal.toLocaleString('en-ZA')} kcal</span></div>`).join('')+`</div></section>`;
+  h+=`<section class="section"><h2>About you</h2><div class="fields">
+    <div class="field"><label for="ff-w">Weight (kg)</label><input id="ff-w" type="number" inputmode="decimal" data-fit="weightKg" value="${f.weightKg}"></div>
+    <div class="field"><label for="ff-h">Height (cm)</label><input id="ff-h" type="number" inputmode="numeric" data-fit="heightCm" value="${f.heightCm}"></div>
+    <div class="field"><label for="ff-a">Age</label><input id="ff-a" type="number" inputmode="numeric" data-fit="age" value="${f.age}"></div>
+    <div class="field"><label for="ff-s">Sex, for the calorie formula</label><select id="ff-s" data-fit="sex"><option value="male" ${f.sex==='male'?'selected':''}>Male</option><option value="female" ${f.sex==='female'?'selected':''}>Female</option></select></div></div>
+    <div class="field"><label>Goal</label><div class="chips">${Object.entries(GOALS).map(([k,v])=>`<button class="chip" data-goal="${k}" aria-pressed="${f.goal===k}">${esc(v.label)}</button>`).join('')}</div></div>
+    <div class="fields"><div class="field"><label for="ff-p">Set your own protein (g/day)</label><input id="ff-p" type="number" inputmode="numeric" data-fit="proteinOverride" placeholder="${t.protein}" value="${f.proteinOverride??''}"></div>
+    <div class="field"><label for="ff-k">Set your own rest-day kcal</label><input id="ff-k" type="number" inputmode="numeric" data-fit="kcalOverride" placeholder="${t.restKcal}" value="${f.kcalOverride??''}"></div></div>
+    <div class="switch-row"><div><label for="ff-sn">Add protein snacks</label><small>Eggs, yoghurt, milk or tuna, added to the list when meals fall short</small></div><input class="switch" type="checkbox" id="ff-sn" data-fit="snacks" ${f.snacks?'checked':''}></div></section>
+    <div class="actions"><button class="btn primary" data-act="gen">${icon('refresh')}Re-plan the week</button></div>
+    <p class="note">Targets are estimates from the Mifflin-St Jeor formula plus typical session burn. They're a starting point, not medical advice.</p>`;
   return h;
 }
 
+function openSheet(s){lastFocus=document.activeElement;sheet=s;renderSheet()}
+function closeSheet(){sheet=null;renderSheet();if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
 function renderSheet(){
   document.querySelectorAll('.sheet-bg').forEach(e=>e.remove());
-  if(!sheet) return;
+  if(!sheet)return;
   const bg=document.createElement('div');bg.className='sheet-bg';bg.dataset.close='1';
-  let inner='';
+  let inner='',title='';
   if(sheet.type==='swap'){
-    const [d,slot]=sheet.key.split(':');
+    const [d,slot]=sheet.key.split(':');const cur=currentList().total;
     const alts=alternatives(state.plan,+d,slot,state.settings,priceFeed,state.overrides);
-    inner=`<h2>Swap ${DAYS[d]} ${slot}</h2>`+alts.map(a=>`<div class="alt" data-pick="${a.recipe.id}"><div><b>${esc(a.recipe.name)}</b><div class="nut">${a.nutrition.protein} g protein · ${a.nutrition.kcal} kcal · ${a.recipe.mins} min</div></div><span class="small">week ${money(a.total)}</span></div>`).join('');
-  } else if(sheet.type==='recipe'){
-    const r=recipeById(sheet.id), n=recipeNutrition(r), hh=state.settings.householdSize;
-    inner=`<h2>${esc(r.name)}</h2><div class="nut">${r.mins} min · per person ${n.protein} g protein · ${n.kcal} kcal</div><div class="aisle">Ingredients for ${hh}</div>`+
-      Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];const qq=q*hh/4;return `<div class="small">• ${esc(ing.name)} — ${formatQty({qty:qq,unit:ing.unit})}</div>`}).join('')+
-      `<div class="aisle">Method</div>`+r.steps.map((s,i)=>`<div class="small">${i+1}. ${esc(s)}</div>`).join('');
-  } else if(sheet.type==='text'){
-    inner=`<h2>Grocery list</h2><textarea readonly>${esc(listAsText(currentList(),state.settings))}</textarea>`;
+    title=`Swap ${DAYS[d]} ${slot}`;
+    inner=`<h2 id="sh-t">${title}</h2><p class="sub">Sorted by what it does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><b>${esc(a.recipe.name)}</b><small>${a.recipe.mins} min, ${a.nutrition.protein} g protein, ${a.nutrition.kcal} kcal</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
+  }else if(sheet.type==='recipe'){
+    const r=recipeById(sheet.id),n=recipeNutrition(r),hh=state.settings.householdSize;
+    inner=`<h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes. Per person: ${n.protein} g protein, ${n.kcal} kcal.</p><h3>Ingredients for ${plural(hh,'person')}</h3><ul class="ing-list">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id];return `<li>${esc(ing.name.replace(/ \(.*\)/,''))}<span>${formatQty({qty:q*hh/4,unit:ing.unit})}${ing.unit==='ea'?'':''}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps">`+r.steps.map(s=>`<li><span>${esc(s)}</span></li>`).join('')+`</ol>`;
+  }else if(sheet.type==='text'){
+    inner=`<h2 id="sh-t">Grocery list</h2><p class="sub">Select all and paste into WhatsApp or Notes.</p><textarea readonly aria-labelledby="sh-t">${esc(listAsText(currentList(),state.settings))}</textarea>`;
   }
-  bg.innerHTML=`<div class="sheet">${inner}<div style="margin-top:12px"><button class="btn" data-close="1">Close</button></div></div>`;
+  bg.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t"><div class="grab"></div>${inner}<div class="actions"><button class="btn" data-close="1">Close</button></div></div>`;
   document.body.appendChild(bg);
+  bg.querySelector('.sheet button, .sheet textarea')?.focus();
 }
 
 function render(){
+  if(!state.plan)regenerate(true,true);
   renderNav();
   const v={plan:renderPlan,list:renderList,fitness:renderFitness,settings:renderSettings}[state.tab]();
   document.getElementById('app').innerHTML=v;
   const s=state.settings;
-  document.getElementById('sub').textContent=`${s.householdSize} ${s.householdSize==1?'person':'people'} · ${money(s.weeklyBudget)}/week${s.diets.length?' · '+s.diets.map(d=>DIETS[d].label).join(', '):''}`;
+  document.getElementById('sub').textContent=`${plural(s.householdSize,'person')}, ${money(s.weeklyBudget)} a week${s.diets.length?', '+s.diets.map(d=>DIETS[d].label.toLowerCase()).join(', '):''}`;
   renderSheet();
 }
 
 // ---------------- Events ----------------
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-fit-toggle],[data-pick],[data-close]');
-  if(!t) return;
-  if(t.dataset.close&&e.target!==t&&!e.target.closest('button'))return;
+  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal]');
+  if(!t)return;
+  if(t.dataset.close){if(t.classList.contains('sheet-bg')&&e.target!==t)return;closeSheet();return}
+  const s=state.settings;
   if(t.dataset.tab){state.tab=t.dataset.tab;sheet=null;render();window.scrollTo(0,0);return}
-  if(t.dataset.close){sheet=null;renderSheet();return}
-  if(t.dataset.store){state.settings.store=t.dataset.store;save();render();return}
-  if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else state.locked[k]=state.plan.days[+k.split(':')[0]][k.split(':')[1]];save();render();return}
-  if(t.dataset.swap){sheet={type:'swap',key:t.dataset.swap};renderSheet();return}
-  if(t.dataset.recipe){sheet={type:'recipe',id:t.dataset.recipe};renderSheet();return}
-  if(t.dataset.pick){const [d,slot]=sheet.key.split(':');state.plan=applySwap(state.plan,+d,slot,t.dataset.pick,state.settings);state.locked[sheet.key]=t.dataset.pick;sheet=null;save();render();return}
-  if(t.dataset.chip){const arr=state.settings[t.dataset.chip];const i=arr.indexOf(t.dataset.val);if(i>=0)arr.splice(i,1);else arr.push(t.dataset.val);save();render();return}
-  if(t.dataset.meal){state.settings.meals[t.dataset.meal]=!state.settings.meals[t.dataset.meal];save();render();return}
-  if(t.hasAttribute('data-fit-toggle')){state.settings.fitness.enabled=!state.settings.fitness.enabled;save();render();return}
+  if(t.dataset.day){state.day=+t.dataset.day;render();return}
+  if(t.dataset.store){s.store=t.dataset.store;save();render();return}
+  if(t.dataset.step){s.householdSize=Math.min(12,Math.max(1,s.householdSize+ +t.dataset.step));save();render();return}
+  if(t.dataset.goal){s.fitness.goal=t.dataset.goal;save();render();return}
+  if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else{const [d,m]=k.split(':');state.locked[k]=state.plan.days[+d][m]}save();render();return}
+  if(t.dataset.swap){openSheet({type:'swap',key:t.dataset.swap});return}
+  if(t.dataset.recipe){openSheet({type:'recipe',id:t.dataset.recipe});return}
+  if(t.dataset.pick){const [d,slot]=sheet.key.split(':');state.plan=applySwap(state.plan,+d,slot,t.dataset.pick,s);state.locked[sheet.key]=t.dataset.pick;sheet=null;save();render();toast('Meal swapped and kept');return}
+  if(t.dataset.chip){const arr=s[t.dataset.chip];const i=arr.indexOf(t.dataset.val);if(i>=0)arr.splice(i,1);else arr.push(t.dataset.val);save();render();return}
+  if(t.dataset.meal){s.meals[t.dataset.meal]=!s.meals[t.dataset.meal];save();render();return}
   const a=t.dataset.act;
-  if(a==='gen'){regenerate(true);state.tab='plan';render();window.scrollTo(0,0)}
+  if(a==='gen'){state.tab='plan';regenerate(true);window.scrollTo(0,0)}
   if(a==='genall'){regenerate(false)}
   if(a==='uncheck'){state.checked={};save();render()}
-  if(a==='showtext'){sheet={type:'text'};renderSheet()}
-  if(a==='copy'){try{await navigator.clipboard.writeText(listAsText(currentList(),state.settings));toast('List copied')}catch(err){sheet={type:'text'};renderSheet()}}
+  if(a==='showtext')openSheet({type:'text'});
+  if(a==='copy'){try{await navigator.clipboard.writeText(listAsText(currentList(),s));toast('List copied')}catch(err){openSheet({type:'text'})}}
 });
 document.addEventListener('change',e=>{
-  const t=e.target, s=state.settings;
+  const t=e.target,s=state.settings;
   if(t.dataset.check){if(t.checked)state.checked[t.dataset.check]=true;else delete state.checked[t.dataset.check];save();render();return}
-  if(t.dataset.set){const k=t.dataset.set;s[k]=t.type==='checkbox'?t.checked:t.type==='number'?Math.max(1,Number(t.value)||1):t.value;save();render();return}
+  if(t.dataset.set){const k=t.dataset.set;s[k]=t.type==='checkbox'?t.checked:t.type==='number'?Math.max(100,Number(t.value)||100):t.value;save();render();return}
   if(t.dataset.price){const v=t.value.trim();if(v==='')delete state.overrides[t.dataset.price];else state.overrides[t.dataset.price]=Number(v);save();render();return}
-  if(t.dataset.fit){const k=t.dataset.fit;let v=t.type==='checkbox'?t.checked:t.value;if(t.type==='number')v=v===''?(k.endsWith('Override')?null:s.fitness[k]):Number(v);s.fitness[k]=v;save();render();return}
+  if(t.dataset.fit){const k=t.dataset.fit;let v=t.type==='checkbox'?t.checked:t.value;if(t.type==='number')v=v===''?(k.endsWith('Override')?null:s.fitness[k]):Number(v);s.fitness[k]=v;save();if(k==='enabled'&&v)regenerate(true,true);render();return}
   if(t.dataset.week){s.fitness.week[+t.dataset.week]=t.value;save();render();return}
 });
 
@@ -281,15 +517,12 @@ render();
     const [d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
     if(!d)return;
     db=d;
-    // Shared price feed, refreshed monthly.
-    let timer=setTimeout(()=>{},10000);
-    db.doc('prices/current').onSnapshot(snap=>{clearTimeout(timer);if(snap.exists){priceFeed=snap.data();render()}},()=>clearTimeout(timer));
+    db.doc('prices/current').onSnapshot(snap=>{if(snap.exists){priceFeed=snap.data();render()}},()=>{});
     const id=u?await u.id():null;
     if(!id)return;
     userId=id;
     const snap=await db.doc('data/users/'+id+'/state').get();
-    if(snap.exists){applySaved(snap.data());render()} else if(state.plan||state.settings){save()}
-    render();
+    if(snap.exists){applySaved(snap.data());render()}else save();
   }catch(e){console.warn(e)}
 })();
 </script>

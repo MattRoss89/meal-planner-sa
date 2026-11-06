@@ -1,13 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Linking, Platform,
-  StyleSheet, useColorScheme, ActivityIndicator,
+  View, ScrollView, TouchableOpacity, Modal, Linking, Platform, Switch, useColorScheme,
+  ActivityIndicator, useWindowDimensions, TextInput,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { useFonts, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
+import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold } from '@expo-google-fonts/figtree';
+import { IBMPlexMono_400Regular, IBMPlexMono_600SemiBold } from '@expo-google-fonts/ibm-plex-mono';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
@@ -18,38 +21,20 @@ import {
   loadState, saveState, loadPriceFeed,
 } from './src/backend';
 import { GOOGLE_CLIENT_IDS } from './src/config';
+import {
+  LIGHT, DARK, FONTS, ThemeCtx, useT, shadow, Icon, T, H, Btn, Chip, Chips, Section, Field, NumInput, Meter, Dashed, ZigZag,
+} from './src/ui';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const money = n => 'R' + Math.round(n).toLocaleString('en-ZA');
-const LIGHT = { bg: '#f6f5f1', card: '#fff', ink: '#1d2321', muted: '#68716d', line: '#e4e2dc', brand: '#1f7a4d', soft: '#e3f1e9', warn: '#b54708', warnSoft: '#fdf0e2' };
-const DARK = { bg: '#121514', card: '#1b1f1e', ink: '#eef1ef', muted: '#9aa39f', line: '#2b302e', brand: '#4cc08a', soft: '#1d3329', warn: '#f2a65a', warnSoft: '#3a2a1a' };
-const ThemeCtx = React.createContext(LIGHT);
-const useT = () => React.useContext(ThemeCtx);
-
-// ---------- small components ----------
-function Card({ children, style }) { const t = useT(); return <View style={[{ backgroundColor: t.card, borderColor: t.line, borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }, style]}>{children}</View>; }
-function T({ children, style, muted, small, bold, ...p }) { const t = useT(); return <Text {...p} style={[{ color: muted ? t.muted : t.ink, fontSize: small ? 13 : 15 }, bold && { fontWeight: '700' }, style]}>{children}</Text>; }
-function Btn({ title, onPress, primary, small, style }) {
-  const t = useT();
-  return <TouchableOpacity onPress={onPress} style={[{ borderWidth: 1, borderColor: primary ? t.brand : t.line, backgroundColor: primary ? t.brand : t.card, borderRadius: 10, paddingVertical: small ? 6 : 10, paddingHorizontal: small ? 10 : 14, alignItems: 'center' }, style]}>
-    <Text style={{ color: primary ? '#fff' : t.ink, fontWeight: '600', fontSize: small ? 13 : 15 }}>{title}</Text></TouchableOpacity>;
-}
-function Chip({ label, on, onPress }) {
-  const t = useT();
-  return <TouchableOpacity onPress={onPress} style={{ borderWidth: 1, borderColor: on ? t.brand : t.line, backgroundColor: on ? t.brand : t.card, borderRadius: 99, paddingVertical: 6, paddingHorizontal: 11, marginRight: 6, marginBottom: 6 }}>
-    <Text style={{ color: on ? '#fff' : t.ink, fontSize: 13 }}>{label}</Text></TouchableOpacity>;
-}
-function Chips({ children }) { return <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>{children}</View>; }
-function Label({ children }) { return <T muted small style={{ marginTop: 10, marginBottom: 4 }}>{children}</T>; }
-function NumField({ value, onChange, placeholder }) {
-  const t = useT();
-  const [v, setV] = useState(value == null ? '' : String(value));
-  useEffect(() => { setV(value == null ? '' : String(value)); }, [value]);
-  return <TextInput keyboardType="numeric" value={v} placeholder={placeholder} placeholderTextColor={t.muted}
-    onChangeText={setV} onEndEditing={() => onChange(v)} onBlur={() => onChange(v)}
-    style={{ borderWidth: 1, borderColor: t.line, borderRadius: 10, padding: 9, color: t.ink, backgroundColor: t.card }} />;
-}
+const money = n => 'R' + Math.round(n).toLocaleString('en-ZA').replace(/ /g, ' ');
+const money2 = n => 'R' + n.toFixed(2);
+const plural = (n, w) => n === 1 ? `1 ${w}` : `${n} ${w === 'person' ? 'people' : w + 's'}`;
+const shortStore = k => ({ shoprite: 'Shoprite', checkers: 'Checkers', pnp: 'Pick n Pay', spar: 'Spar', woolworths: 'Woolworths' }[k]);
+const todayIdx = () => (new Date().getDay() + 6) % 7;
+const weekStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - todayIdx()); return d; };
+const dayDate = i => { const d = weekStart(); d.setDate(d.getDate() + i); return d; };
+const cap = s => s[0].toUpperCase() + s.slice(1);
 
 // ---------- login ----------
 function LoginScreen({ onGuest }) {
@@ -57,117 +42,222 @@ function LoginScreen({ onGuest }) {
   const [err, setErr] = useState(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(GOOGLE_CLIENT_IDS);
   useEffect(() => {
-    if (response?.type === 'success') {
-      signInWithGoogleIdToken(response.params.id_token).catch(e => setErr(e.message));
-    }
+    if (response?.type === 'success') signInWithGoogleIdToken(response.params.id_token).catch(e => setErr(e.message));
   }, [response]);
   const go = async () => {
     setErr(null);
     try { if (Platform.OS === 'web') await signInWithGoogleWeb(); else await promptAsync(); }
-    catch (e) { setErr(e.message); }
+    catch (e) { setErr('Google sign-in didn\'t finish. Try again, or continue without an account.'); }
   };
-  return <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
-    <T bold style={{ fontSize: 26, marginBottom: 6 }}>Meal Planner SA</T>
-    <T muted style={{ marginBottom: 24 }}>Weekly meals on your budget and diet, a costed grocery list for South African stores, and fitness-aware portions.</T>
-    <Btn primary title="Continue with Google" onPress={go} style={{ opacity: Platform.OS === 'web' || request ? 1 : 0.5 }} />
-    <View style={{ height: 10 }} />
-    <Btn title="Use without an account" onPress={onGuest} />
-    {err && <T small style={{ color: t.warn, marginTop: 12 }}>{err}</T>}
-    <T muted small style={{ marginTop: 18 }}>Signing in saves your settings and plans to your account so they follow you across phone and web.</T>
+  return <View style={{ flex: 1, justifyContent: 'flex-end', padding: 24, paddingBottom: 40, maxWidth: 520, width: '100%', alignSelf: 'center', gap: 12 }}>
+    <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center' }}><Icon name="list" size={28} color={t.accentInk} /></View>
+    <H size={34} heavy>Your week of meals, costed before you shop.</H>
+    <T muted size={16} style={{ marginBottom: 16 }}>Plans that fit your budget and diet, a grocery list priced for Checkers, Pick n Pay, Woolworths, Shoprite and Spar, and portions sized to your training.</T>
+    <Btn kind="primary" title="Continue with Google" onPress={go} style={{ opacity: Platform.OS === 'web' || request ? 1 : 0.5, paddingVertical: 14 }} />
+    <Btn title="Use without an account" onPress={onGuest} style={{ paddingVertical: 14 }} />
+    {err && <T size={13.5} color={t.bad}>{err}</T>}
+    <T muted size={13}>Signing in keeps your settings and plans in sync between your phone and the web.</T>
   </View>;
 }
 
-// ---------- budget card ----------
-function BudgetCard({ list, settings, priceFeed, onStore }) {
+// ---------- plan ----------
+function Summary({ list, settings }) {
   const t = useT();
-  const b = settings.weeklyBudget, over = list.total > b, pct = Math.min(100, (list.total / b) * 100);
-  return <Card>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <View><T muted small>This week · {STORES[settings.store].name}</T><T bold style={{ fontSize: 28 }}>{money(list.total)}</T></View>
-      <View style={{ backgroundColor: over ? t.warnSoft : t.soft, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 3 }}>
-        <Text style={{ color: over ? t.warn : t.brand, fontWeight: '700', fontSize: 12 }}>{over ? money(list.total - b) + ' over' : money(b - list.total) + ' left'} of {money(b)}</Text></View>
+  const b = settings.weeklyBudget, total = list.total, over = total > b;
+  const cheapest = Object.entries(list.byStore).sort((a, c) => a[1] - c[1])[0];
+  const saving = list.byStore[settings.store] - cheapest[1];
+  return <View style={[{ backgroundColor: t.surface, borderRadius: 20, padding: 18, gap: 14 }, shadow]}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
+      <View>
+        <T muted size={13}>Groceries this week at {shortStore(settings.store)}</T>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+          <H size={40} heavy style={{ letterSpacing: -1 }}>{money(total)}</H><T muted font="semi">of {money(b)}</T>
+        </View>
+      </View>
+      <View style={{ backgroundColor: over ? t.badSoft : t.accentSoft, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10 }}>
+        <T size={13} font="semi" color={over ? t.bad : t.accent}>{over ? money(total - b) + ' over budget' : money(b - total) + ' to spare'}</T>
+      </View>
     </View>
-    <View style={{ height: 8, backgroundColor: t.line, borderRadius: 99, marginTop: 8, overflow: 'hidden' }}><View style={{ width: pct + '%', height: 8, backgroundColor: over ? t.warn : t.brand }} /></View>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginHorizontal: -4 }}>
-      {Object.entries(STORES).map(([k, v]) => <TouchableOpacity key={k} onPress={() => onStore(k)} style={{ width: '50%', padding: 4 }}>
-        <View style={{ borderWidth: settings.store === k ? 2 : 1, borderColor: settings.store === k ? t.brand : t.line, borderRadius: 10, padding: 8 }}>
-          <T muted small>{v.name}</T><T bold style={{ fontSize: 16 }}>{money(list.byStore[k])}</T></View></TouchableOpacity>)}
+    <Meter value={total} max={b} over={over} />
+    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      <Icon name={saving > 5 ? 'list' : 'check'} size={18} />
+      <T muted size={13.5} style={{ flex: 1 }}>{saving > 5
+        ? <><T size={13.5} font="semi">{shortStore(cheapest[0])}</T> would be about {money(saving)} cheaper for this list.</>
+        : `${shortStore(settings.store)} is the cheapest option for this list.`}</T>
     </View>
-    <T muted small style={{ marginTop: 6 }}>{priceFeed?.updatedAt ? 'Prices updated ' + new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA') : 'Estimated prices'} · other stores estimated from a price index</T>
-  </Card>;
+  </View>;
 }
 
-// ---------- screens ----------
-function PlanScreen({ data, update, priceFeed, openSheet, regenerate }) {
+function WeekStrip({ day, setDay, plan, settings, targets }) {
   const t = useT();
-  const s = data.settings;
-  if (!data.plan) return <Card><T bold style={{ fontSize: 18 }}>Plan your week</T><T muted style={{ marginVertical: 8 }}>Set household, budget and diet in Settings, then generate a 7-day plan with a costed grocery list.</T><Btn primary title="Generate my week" onPress={() => regenerate(true)} /></Card>;
-  const list = buildList(data.plan, s, priceFeed, data.overrides);
-  const targets = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
-  const slots = ['breakfast', 'lunch', 'dinner'].filter(m => s.meals[m]);
-  return <View>
-    <BudgetCard list={list} settings={s} priceFeed={priceFeed} onStore={k => update(d => { d.settings.store = k; })} />
-    <View style={{ flexDirection: 'row', marginBottom: 12 }}><Btn primary title="↻ New plan" onPress={() => regenerate(true)} /><View style={{ width: 8 }} /><Btn title="Reset locks" onPress={() => regenerate(false)} /></View>
-    {data.plan.days.map((d, i) => {
-      const n = dayNutrition(d);
-      const tg = targets && targets.days[i];
-      return <Card key={i}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-          <T bold>{DAYS[i]}</T>
-          <T small muted>{tg ? `${ACTIVITIES[tg.activity].label} · ` : ''}<Text style={{ color: tg ? (n.protein >= tg.protein - 5 ? t.brand : t.warn) : t.muted }}>{n.protein}{tg ? '/' + tg.protein : ''} g protein</Text> · {n.kcal}{tg ? '/' + tg.kcal : ''} kcal</T>
-        </View>
-        {slots.map(m => {
-          const r = d[m] && recipeById(d[m]); const key = i + ':' + m; const lk = !!data.locked[key];
-          return <View key={m} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderColor: t.line }}>
-            <T muted small style={{ width: 72, textTransform: 'uppercase', fontSize: 11 }}>{m}</T>
-            <TouchableOpacity style={{ flex: 1 }} onPress={() => r && openSheet({ type: 'recipe', id: r.id })}>
-              <T>{r ? r.name : 'No matching recipe'}</T>
-              {r && <T small muted>{r.mins} min · {Math.round(recipeNutrition(r).protein * (d.portion || 1))} g protein{d.portion && d.portion !== 1 ? ` · your portion ${d.portion}×` : ''}</T>}
-            </TouchableOpacity>
-            {r && <TouchableOpacity onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })} style={{ padding: 6 }}><Text style={{ fontSize: 17 }}>{lk ? '🔒' : '🔓'}</Text></TouchableOpacity>}
-            {r && <TouchableOpacity onPress={() => openSheet({ type: 'swap', key })} style={{ padding: 6 }}><Text style={{ fontSize: 17, color: t.muted }}>⇄</Text></TouchableOpacity>}
-          </View>;
-        })}
-        {d.snacks?.length > 0 && <View style={{ flexDirection: 'row', paddingTop: 8, borderTopWidth: 1, borderColor: t.line }}><T muted small style={{ width: 72, fontSize: 11 }}>SNACKS</T><T small muted style={{ flex: 1 }}>{d.snacks.map(x => recipeById(x).name).join(' · ')}</T></View>}
-      </Card>;
+  return <View style={{ flexDirection: 'row', gap: 6, marginTop: 18, marginBottom: 14 }}>
+    {DAYS.map((nm, i) => {
+      const sel = i === day;
+      const train = targets && settings.fitness.week[i] !== 'rest';
+      const short = targets && dayNutrition(plan.days[i]).protein < targets.days[i].protein - 5;
+      return <TouchableOpacity key={nm} onPress={() => setDay(i)} accessibilityRole="button" accessibilityState={{ selected: sel }}
+        accessibilityLabel={`${nm} ${dayDate(i).getDate()}${train ? ', training day' : ''}`}
+        style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 14, backgroundColor: sel ? t.ink : t.surface, borderWidth: 1, borderColor: sel ? t.ink : i === todayIdx() ? t.line : 'transparent' }}>
+        <T size={12} font="semi" color={sel ? t.bg : t.muted} style={sel && { opacity: 0.75 }}>{nm}</T>
+        <H size={19} style={{ color: sel ? t.bg : t.ink }}>{dayDate(i).getDate()}</H>
+        <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 3, backgroundColor: short ? t.bad : train ? t.train : 'transparent' }} />
+      </TouchableOpacity>;
     })}
   </View>;
 }
 
+function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDay, narrow }) {
+  const t = useT();
+  const s = data.settings;
+  const list = buildList(data.plan, s, priceFeed, data.overrides);
+  const tg = s.fitness.enabled ? fitnessTargets(s.fitness) : null;
+  const slots = ['breakfast', 'lunch', 'dinner'].filter(m => s.meals[m]);
+  const d = data.plan.days[day], n = dayNutrition(d), date = dayDate(day), act = s.fitness.week[day];
+  const locks = Object.keys(data.locked).length;
+  return <View>
+    <Summary list={list} settings={s} />
+    <WeekStrip day={day} setDay={setDay} plan={data.plan} settings={s} targets={tg} />
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+      <H size={24}>{date.toLocaleDateString('en-ZA', { weekday: 'long' })} {date.getDate()} {date.toLocaleDateString('en-ZA', { month: 'long' })}</H>
+      {tg && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: act !== 'rest' ? t.trainSoft : t.sunk, borderRadius: 99, paddingVertical: 4, paddingHorizontal: 10 }}>
+        <Icon name="run" size={16} color={act !== 'rest' ? t.train : t.muted} /><T size={13} font="semi" color={act !== 'rest' ? t.train : t.muted}>{ACTIVITIES[act].label}</T></View>}
+    </View>
+    {tg && <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+      {[['Protein', n.protein, tg.days[day].protein, 'g', 95], ['Energy', n.kcal, tg.days[day].kcal, 'kcal', 90]].map(([label, v, target, unit, okPct]) => {
+        const pct = Math.min(100, (v / target) * 100);
+        return <View key={label} style={{ flex: 1, backgroundColor: t.surface, borderRadius: 14, padding: 12, gap: 6 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><T muted size={13}>{label}</T><T muted size={13}>{Math.round(pct)}%</T></View>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}><H size={20}>{v.toLocaleString('en-ZA')}{unit === 'g' ? ' g' : ''}</H><T muted size={13}>of {target.toLocaleString('en-ZA')} {unit}</T></View>
+          <Meter value={v} max={target} height={6} color={pct < okPct ? t.train : t.accent} />
+        </View>;
+      })}
+    </View>}
+    <View style={[{ backgroundColor: t.surface, borderRadius: 20, overflow: 'hidden' }, shadow]}>
+      {slots.map((m, idx) => {
+        const r = d[m] && recipeById(d[m]); const key = day + ':' + m; const lk = !!data.locked[key];
+        const rn = r && recipeNutrition(r), p = d.portion || 1;
+        const when = <T muted size={narrow ? 12.5 : 13} font="semi" style={!narrow && { width: 76 }}>{cap(m)}</T>;
+        return <View key={m} style={{ paddingVertical: 14, paddingLeft: 16, paddingRight: 10, borderTopWidth: idx ? 1 : 0, borderColor: t.line, gap: 4 }}>
+          {narrow && when}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {!narrow && when}
+            <TouchableOpacity style={{ flex: 1, gap: 3 }} disabled={!r} onPress={() => openSheet({ type: 'recipe', id: r.id })}>
+              <T size={16} font="semi">{r ? r.name : 'No recipe fits your filters'}</T>
+              {r && <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="clock" size={14} /><T muted size={13}>{r.mins} min</T></View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="protein" size={14} /><T muted size={13}>{Math.round(rn.protein * p)} g protein</T></View>
+                {p !== 1 && <T size={13} font="semi" color={t.train}>Your portion ×{p}</T>}
+              </View>}
+            </TouchableOpacity>
+            {r && <TouchableOpacity accessibilityLabel={lk ? `Unlock ${r.name}` : `Keep ${r.name} when re-planning`} onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })}
+              style={{ width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: lk ? t.accentSoft : 'transparent' }}>
+              <Icon name={lk ? 'lock' : 'unlock'} color={lk ? t.accent : t.muted} /></TouchableOpacity>}
+            {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} onPress={() => openSheet({ type: 'swap', key })} style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}><Icon name="swap" /></TouchableOpacity>}
+          </View>
+        </View>;
+      })}
+      {d.snacks?.length > 0 && <View style={{ padding: 14, paddingLeft: 16, borderTopWidth: 1, borderStyle: 'dashed', borderColor: t.line, backgroundColor: t.trainSoft, gap: 8 }}>
+        <T size={13} font="semi" color={t.train}>Snacks</T>
+        <Chips>{d.snacks.map((x, i) => <View key={i} style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, borderRadius: 99, paddingVertical: 3, paddingHorizontal: 9 }}><T size={13}>{recipeById(x).name}</T></View>)}</Chips>
+      </View>}
+    </View>
+    <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+      <Btn kind="primary" icon="refresh" title="Plan a new week" onPress={() => regenerate(true)} />
+      {locks > 0 && <Btn kind="ghost" title={`Clear ${plural(locks, 'kept meal')}`} onPress={() => regenerate(false)} />}
+    </View>
+    {!tg && <T muted size={13} style={{ marginTop: 14 }}>{n.protein} g protein and {n.kcal.toLocaleString('en-ZA')} kcal per person today. Turn on Fitness to plan around your training.</T>}
+  </View>;
+}
+
+// ---------- groceries ----------
 function ListScreen({ data, update, priceFeed, openSheet, toast }) {
   const t = useT();
   const s = data.settings;
-  if (!data.plan) return <Card><T muted>Generate a plan first.</T></Card>;
   const list = buildList(data.plan, s, priceFeed, data.overrides);
   const main = list.items.filter(i => s.includeStaples || !i.staple), staples = list.items.filter(i => i.staple && !s.includeStaples);
+  const left = main.filter(i => !data.checked[i.id]).length;
+  const max = Math.max(...Object.values(list.byStore));
   let aisle = '';
   const copy = async () => { await Clipboard.setStringAsync(listAsText(list, s)); toast('List copied'); };
+  const P = { color: t.paperInk };
   return <View>
-    <BudgetCard list={list} settings={s} priceFeed={priceFeed} onStore={k => update(d => { d.settings.store = k; })} />
-    <Card>
-      <T bold>Shop at {STORES[s.store].name}</T>
-      <T small muted>Tap “find” to open the item on the store's site or app.</T>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
-        <Btn primary small title="Copy list" onPress={copy} /><View style={{ width: 8 }} />
-        <Btn small title="Show as text" onPress={() => openSheet({ type: 'text' })} /><View style={{ width: 8 }} />
-        <Btn small title="Uncheck all" onPress={() => update(d => { d.checked = {}; })} />
-      </View>
-      {main.map(i => {
-        const head = i.aisle !== aisle ? (aisle = i.aisle) : null;
-        const done = !!data.checked[i.id];
-        return <View key={i.id}>
-          {head && <T muted small bold style={{ marginTop: 14, textTransform: 'uppercase', fontSize: 12 }}>{head}</T>}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderColor: t.line }}>
-            <TouchableOpacity onPress={() => update(d => { if (done) delete d.checked[i.id]; else d.checked[i.id] = true; })} style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: t.brand, backgroundColor: done ? t.brand : 'transparent', marginRight: 10, alignItems: 'center', justifyContent: 'center' }}>{done && <Text style={{ color: '#fff', fontSize: 13 }}>✓</Text>}</TouchableOpacity>
-            <View style={{ flex: 1 }}><T style={done && { textDecorationLine: 'line-through', color: t.muted }}>{i.name}</T><T small muted>× {i.packs} · need {formatQty(i)}</T></View>
-            <T small style={{ marginRight: 10 }}>R{i.cost.toFixed(2)}</T>
-            <TouchableOpacity onPress={() => Linking.openURL(storeSearchUrl(s.store, i))}><Text style={{ color: t.brand, fontSize: 13 }}>find ↗</Text></TouchableOpacity>
-          </View></View>;
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+      {Object.keys(STORES).map(k => {
+        const on = s.store === k;
+        return <TouchableOpacity key={k} onPress={() => update(d => { d.settings.store = k; })} accessibilityState={{ selected: on }}
+          style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: 1, borderColor: on ? t.ink : t.line, backgroundColor: on ? t.ink : t.surface, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 12 }}>
+          <T size={13.5} font="semi" color={on ? t.bg : t.ink}>{shortStore(k)}</T><T size={12.5} color={on ? t.bg : t.muted} style={on && { opacity: 0.7 }}>{money(list.byStore[k])}</T>
+        </TouchableOpacity>;
       })}
-      {staples.length > 0 && <T muted small bold style={{ marginTop: 14, fontSize: 12 }}>CHECK YOUR PANTRY</T>}
-      {staples.map(i => <View key={i.id} style={{ flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderColor: t.line }}><T muted style={{ flex: 1 }}>{i.name}</T><TouchableOpacity onPress={() => Linking.openURL(storeSearchUrl(s.store, i))}><Text style={{ color: t.brand, fontSize: 13 }}>find ↗</Text></TouchableOpacity></View>)}
-    </Card>
-    <Card><T small muted>Checkers Sixty60, Pick n Pay asap! and Woolworths Dash don't offer an API for other apps, so this app doesn't sign in to them. “Find” opens each product search on the store's own site, where you're signed in as usual.</T></Card>
+    </ScrollView>
+    <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+      <Btn kind="primary" icon="copy" title="Copy list" onPress={copy} />
+      <Btn icon="text" title="View as text" onPress={() => openSheet({ type: 'text' })} />
+      {Object.keys(data.checked).length > 0 && <Btn kind="ghost" title="Untick all" onPress={() => update(d => { d.checked = {}; })} />}
+    </View>
+
+    <View style={[{ marginTop: 16 }, shadow]}>
+      <View style={{ backgroundColor: t.paper, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 14 }}>
+        <View style={{ alignItems: 'center', gap: 2, paddingBottom: 10 }}>
+          <T font="slipSemi" size={16} style={[P, { letterSpacing: 1 }]}>{STORES[s.store].name.toUpperCase()}</T>
+          <T font="slip" size={12} color={t.paperMuted}>Week of {weekStart().toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}, {plural(s.householdSize, 'person')}</T>
+          <T font="slip" size={12} color={t.paperMuted}>{left} of {plural(main.length, 'item')} still to get</T>
+        </View>
+        <Dashed color={t.paperLine} />
+        {main.map(i => {
+          const head = i.aisle !== aisle ? (aisle = i.aisle) : null;
+          const done = !!data.checked[i.id];
+          return <View key={i.id}>
+            {head && <T font="slipSemi" size={12.5} color={t.paperMuted} style={{ marginTop: 14, marginBottom: 2 }}>{head}</T>}
+            <TouchableOpacity onPress={() => update(d => { if (done) delete d.checked[i.id]; else d.checked[i.id] = true; })} accessibilityRole="checkbox" accessibilityState={{ checked: done }}
+              style={{ flexDirection: 'row', gap: 8, paddingVertical: 5, alignItems: 'flex-start' }}>
+              <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: done ? t.paperInk : '#8b8e8f', backgroundColor: done ? t.paperInk : 'transparent', marginTop: 2, alignItems: 'center', justifyContent: 'center' }}>
+                {done && <Icon name="check" size={12} color={t.paper} />}</View>
+              <View style={{ flex: 1 }}>
+                <T font="slip" size={13.5} style={[P, done && { textDecorationLine: 'line-through', color: '#8b8e8f' }]}>{i.packs > 1 ? i.packs + ' × ' : ''}{i.name}</T>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <T font="slip" size={12} color={t.paperMuted}>uses {i.unit === 'ea' ? Math.ceil(i.qty - 0.05) : formatQty(i)}</T>
+                  <TouchableOpacity onPress={() => Linking.openURL(storeSearchUrl(s.store, i))} accessibilityLabel={`Find ${i.name} at ${shortStore(s.store)}`}>
+                    <T font="slip" size={12} color="#1e6b4a" style={{ textDecorationLine: 'underline' }}>find</T></TouchableOpacity>
+                </View>
+              </View>
+              <T font="slip" size={13.5} style={P}>{money2(i.cost)}</T>
+            </TouchableOpacity>
+          </View>;
+        })}
+        <View style={{ marginTop: 12 }}><Dashed color={t.paperLine} /></View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 }}>
+          <T font="slipSemi" size={16} style={P}>ESTIMATED TOTAL</T><T font="slipSemi" size={16} style={P}>{money2(list.total)}</T></View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <T font="slip" size={12} color={t.paperMuted}>Budget {money(s.weeklyBudget)}</T>
+          <T font="slip" size={12} color={t.paperMuted}>{list.total > s.weeklyBudget ? money(list.total - s.weeklyBudget) + ' over' : money(s.weeklyBudget - list.total) + ' under'}</T></View>
+        {staples.length > 0 && <><View style={{ marginTop: 12 }}><Dashed color={t.paperLine} /></View>
+          <T font="slip" size={12.5} color={t.paperMuted} style={{ marginTop: 8 }}>Check your cupboard for {staples.map(i => i.name.replace(/ \(.*\)/, '').toLowerCase()).join(', ')}.</T></>}
+      </View>
+      <ZigZag color={t.paper} />
+    </View>
+
+    <View style={{ backgroundColor: t.surface, borderRadius: 20, padding: 18, marginTop: 16, gap: 10 }}>
+      <H size={16}>Same list at other stores</H>
+      {Object.entries(list.byStore).sort((a, c) => a[1] - c[1]).map(([k, v]) => {
+        const cur = k === s.store;
+        return <View key={k} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <T size={13.5} font={cur ? 'semi' : 'body'} style={{ width: 96 }}>{shortStore(k)}</T>
+          <View style={{ flex: 1 }}><Meter value={v} max={max} height={12} color={cur ? t.accent : t.line} /></View>
+          <T size={13.5} font={cur ? 'semi' : 'body'} style={{ width: 66, textAlign: 'right' }}>{money(v)}</T>
+        </View>;
+      })}
+    </View>
+    <T muted size={13} style={{ marginTop: 14 }}>{priceFeed?.updatedAt ? `Prices last refreshed ${new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}. ` : 'Prices are estimates until the first monthly refresh. '}Other stores are estimated from a basket price index. Store accounts can't be linked because Sixty60, PnP asap! and Woolworths Dash don't offer that to other apps, so each item links to the store's own search.</T>
+  </View>;
+}
+
+// ---------- fitness ----------
+function SwitchRow({ title, sub, value, onChange, big }) {
+  const t = useT();
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <View style={{ flex: 1, gap: 2 }}>{big ? <H>{title}</H> : <T font="semi">{title}</T>}{sub && <T muted size={13}>{sub}</T>}</View>
+    <Switch value={value} onValueChange={onChange} trackColor={{ true: t.accent, false: t.line }} thumbColor="#fff" ios_backgroundColor={t.line} accessibilityLabel={title} />
   </View>;
 }
 
@@ -178,176 +268,236 @@ function FitnessScreen({ data, update, regenerate }) {
   const num = (k, nullable) => v => setF(k, v === '' ? (nullable ? null : f[k]) : Number(v));
   const tg = fitnessTargets(f);
   return <View>
-    <Card>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><T bold>Fitness mode</T><Chip label={f.enabled ? 'On' : 'Off'} on={f.enabled} onPress={() => setF('enabled', !f.enabled)} /></View>
-      <T small muted>Plans aim at your daily protein and calories, scale your portions on training days, and add protein snacks to the list when meals fall short. Targets are for one person in the household.</T>
-    </Card>
-    {f.enabled && <>
-      <Card><T bold>Your targets</T>
-        <View style={{ flexDirection: 'row', marginTop: 8 }}>
-          <View style={{ flex: 1 }}><T muted small>Protein / day</T><T bold style={{ fontSize: 26 }}>{tg.protein} g</T><T muted small>{tg.perKg} g per kg</T></View>
-          <View style={{ flex: 1 }}><T muted small>Rest-day calories</T><T bold style={{ fontSize: 26 }}>{tg.restKcal}</T><T muted small>BMR {tg.bmr} kcal</T></View>
-        </View></Card>
-      <Card><T bold>Body & goal</T>
+    <Section><SwitchRow big title="Plan around training" sub="Bigger portions on training days, a daily protein target, and protein snacks on the list when meals fall short."
+      value={f.enabled} onChange={v => { setF('enabled', v); if (v) setTimeout(() => regenerate(true, true), 0); }} /></Section>
+    {!f.enabled ? <T muted size={13}>Targets apply to one person in the household. Everyone else eats standard portions.</T> : <>
+      <Section title="Daily targets">
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}><Label>Weight (kg)</Label><NumField value={f.weightKg} onChange={num('weightKg')} /></View>
-          <View style={{ flex: 1 }}><Label>Height (cm)</Label><NumField value={f.heightCm} onChange={num('heightCm')} /></View>
-          <View style={{ flex: 1 }}><Label>Age</Label><NumField value={f.age} onChange={num('age')} /></View>
+          {[[`${tg.protein} g`, `protein a day (${tg.perKg} g per kg)`], [tg.restKcal.toLocaleString('en-ZA'), 'kcal on a rest day']].map(([v, l]) =>
+            <View key={l} style={{ flex: 1, backgroundColor: t.sunk, borderRadius: 14, padding: 14 }}><H size={30} heavy>{v}</H><T muted size={13}>{l}</T></View>)}
         </View>
-        <Label>Sex (for the calorie formula)</Label>
-        <Chips>{['male', 'female'].map(x => <Chip key={x} label={x === 'male' ? 'Male' : 'Female'} on={f.sex === x} onPress={() => setF('sex', x)} />)}</Chips>
-        <Label>Goal</Label>
-        <Chips>{Object.entries(GOALS).map(([k, v]) => <Chip key={k} label={v.label} on={f.goal === k} onPress={() => setF('goal', k)} />)}</Chips>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}><Label>Protein override (g/day)</Label><NumField value={f.proteinOverride} placeholder={String(tg.protein)} onChange={num('proteinOverride', true)} /></View>
-          <View style={{ flex: 1 }}><Label>Rest-day kcal override</Label><NumField value={f.kcalOverride} placeholder={String(tg.restKcal)} onChange={num('kcalOverride', true)} /></View>
-        </View>
-        <Label>Protein snacks</Label>
-        <Chips><Chip label={f.snacks ? 'Add snacks to close gaps' : 'No snacks'} on={f.snacks} onPress={() => setF('snacks', !f.snacks)} /></Chips>
-      </Card>
-      <Card><T bold>Weekly training</T><T small muted>Training days get more food.</T>
-        {DAYS.map((d, i) => <View key={d} style={{ paddingVertical: 8, borderTopWidth: 1, borderColor: t.line, marginTop: 6 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><T bold>{d}</T><T small muted>{tg.days[i].kcal} kcal</T></View>
-          <Chips>{Object.entries(ACTIVITIES).map(([k, v]) => <Chip key={k} label={v.label} on={f.week[i] === k} onPress={() => update(x => { x.settings.fitness.week[i] = k; })} />)}</Chips>
+      </Section>
+      <Section title="Your week of training" lead="Training days get more food, sized to the session.">
+        {DAYS.map((d, i) => <View key={d} style={{ gap: 8, paddingTop: i ? 10 : 0, borderTopWidth: i ? 1 : 0, borderColor: t.line }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><T font="semi">{d}</T><T muted size={13}>{tg.days[i].kcal.toLocaleString('en-ZA')} kcal</T></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            {Object.entries(ACTIVITIES).map(([k, v]) => <Chip key={k} label={v.label} on={f.week[i] === k} onPress={() => update(x => { x.settings.fitness.week[i] = k; })} />)}
+          </ScrollView>
         </View>)}
-      </Card>
-      <Btn primary title="Re-plan with these targets" onPress={() => regenerate(true)} />
-      <T small muted style={{ marginTop: 10 }}>Estimates only (Mifflin-St Jeor formula plus typical exercise burn), not medical advice.</T>
+      </Section>
+      <Section title="About you">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <Field label="Weight (kg)"><NumInput value={f.weightKg} onChange={num('weightKg')} /></Field>
+          <Field label="Height (cm)"><NumInput value={f.heightCm} onChange={num('heightCm')} /></Field>
+          <Field label="Age"><NumInput value={f.age} onChange={num('age')} /></Field>
+        </View>
+        <Field label="Sex, for the calorie formula"><Chips>{['male', 'female'].map(x => <Chip key={x} label={cap(x)} on={f.sex === x} onPress={() => setF('sex', x)} />)}</Chips></Field>
+        <Field label="Goal"><Chips>{Object.entries(GOALS).map(([k, v]) => <Chip key={k} label={v.label} on={f.goal === k} onPress={() => setF('goal', k)} />)}</Chips></Field>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          <Field label="Set your own protein (g/day)"><NumInput value={f.proteinOverride} placeholder={String(tg.protein)} onChange={num('proteinOverride', true)} /></Field>
+          <Field label="Set your own rest-day kcal"><NumInput value={f.kcalOverride} placeholder={String(tg.restKcal)} onChange={num('kcalOverride', true)} /></Field>
+        </View>
+        <SwitchRow title="Add protein snacks" sub="Eggs, yoghurt, milk or tuna, added to the list when meals fall short" value={f.snacks} onChange={v => setF('snacks', v)} />
+      </Section>
+      <Btn kind="primary" icon="refresh" title="Re-plan the week" onPress={() => regenerate(true)} style={{ alignSelf: 'flex-start' }} />
+      <T muted size={13} style={{ marginTop: 14 }}>Targets are estimates from the Mifflin-St Jeor formula plus typical session burn. They're a starting point, not medical advice.</T>
     </>}
   </View>;
 }
 
+// ---------- settings ----------
 function SettingsScreen({ data, update, priceFeed, user, onSignOut }) {
   const t = useT();
   const s = data.settings;
   const toggle = (k, v) => update(d => { const a = d.settings[k]; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); });
+  const step = n => update(d => { d.settings.householdSize = Math.min(12, Math.max(1, s.householdSize + n)); });
+  let aisle = '';
   return <View>
-    <Card><T bold>Household & budget</T>
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}><Label>People eating</Label><NumField value={s.householdSize} onChange={v => update(d => { d.settings.householdSize = Math.max(1, Number(v) || 1); })} /></View>
-        <View style={{ flex: 1 }}><Label>Weekly budget (R)</Label><NumField value={s.weeklyBudget} onChange={v => update(d => { d.settings.weeklyBudget = Math.max(100, Number(v) || 100); })} /></View>
+    <Section title="Household and budget">
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <Field label="People eating">
+          <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.line, borderRadius: 12, backgroundColor: t.bg }}>
+            <TouchableOpacity accessibilityLabel="Fewer people" onPress={() => step(-1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>−</T></TouchableOpacity>
+            <T font="bold" size={16} style={{ flex: 1, textAlign: 'center' }}>{s.householdSize}</T>
+            <TouchableOpacity accessibilityLabel="More people" onPress={() => step(1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>+</T></TouchableOpacity>
+          </View>
+        </Field>
+        <Field label="Weekly grocery budget"><NumInput prefix="R" value={s.weeklyBudget} onChange={v => update(d => { d.settings.weeklyBudget = Math.max(100, Number(v) || 100); })} /></Field>
       </View>
-      <Label>Main store</Label>
-      <Chips>{Object.entries(STORES).map(([k, v]) => <Chip key={k} label={v.name} on={s.store === k} onPress={() => update(d => { d.settings.store = k; })} />)}</Chips>
-      <Label>Meals to plan</Label>
-      <Chips>{['breakfast', 'lunch', 'dinner'].map(m => <Chip key={m} label={m[0].toUpperCase() + m.slice(1)} on={s.meals[m]} onPress={() => update(d => { d.settings.meals[m] = !s.meals[m]; })} />)}</Chips>
-      <Label>Pantry staples (oil, spices, flour)</Label>
-      <Chips><Chip label={s.includeStaples ? 'Included in total' : 'Listed separately'} on={s.includeStaples} onPress={() => update(d => { d.settings.includeStaples = !s.includeStaples; })} /></Chips>
-    </Card>
-    <Card><T bold>Dietary requirements</T>
-      <Label>Must avoid</Label><Chips>{Object.entries(DIETS).map(([k, v]) => <Chip key={k} label={v.label} on={s.diets.includes(k)} onPress={() => toggle('diets', k)} />)}</Chips>
-      <Label>Preferences</Label><Chips>{Object.entries(PREFERENCES).map(([k, v]) => <Chip key={k} label={v.label} on={s.prefs.includes(k)} onPress={() => toggle('prefs', k)} />)}</Chips>
-      <T small muted style={{ marginTop: 6 }}>Halal: buy halal-certified meat. Boerewors is treated as containing pork. Stock cubes, oats and soy sauce are treated as containing gluten.</T>
-    </Card>
-    <Card><T bold>Prices</T><T small muted>Base prices are Checkers{priceFeed?.updatedAt ? `, updated ${new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA')}` : ' estimates'}. Type your own price to override.</T>
-      {Object.entries(INGREDIENTS).map(([id, ing]) => <View key={id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4, borderBottomWidth: 1, borderColor: t.line }}>
-        <T style={{ flex: 1 }} small>{ing.name}</T>
-        <View style={{ width: 100 }}><NumField value={data.overrides[id]} placeholder={priceOf(id, 'checkers', priceFeed, null).toFixed(2)} onChange={v => update(d => { if (v === '') delete d.overrides[id]; else d.overrides[id] = Number(v); })} /></View>
-      </View>)}
-    </Card>
-    <Card>{user ? <><T>Signed in as {user.email}</T><View style={{ height: 8 }} /><Btn title="Sign out" onPress={onSignOut} /></> : <T small muted>{firebaseReady ? 'Not signed in: saved on this device only.' : 'Saved on this device (Firebase not configured).'}</T>}</Card>
+      <Field label="Where you shop"><Chips>{Object.keys(STORES).map(k => <Chip key={k} label={shortStore(k)} on={s.store === k} onPress={() => update(d => { d.settings.store = k; })} />)}</Chips></Field>
+      <Field label="Meals to plan"><Chips>{['breakfast', 'lunch', 'dinner'].map(m => <Chip key={m} label={cap(m)} on={s.meals[m]} onPress={() => update(d => { d.settings.meals[m] = !s.meals[m]; })} />)}</Chips></Field>
+      <SwitchRow title="Count pantry staples in the total" sub="Oil, spices, flour, stock cubes and sauces" value={s.includeStaples} onChange={v => update(d => { d.settings.includeStaples = v; })} />
+    </Section>
+    <Section title="Dietary needs" lead="Recipes with anything you avoid are left out of every plan.">
+      <Field label="Avoid"><Chips>{Object.entries(DIETS).map(([k, v]) => <Chip key={k} label={v.label} on={s.diets.includes(k)} onPress={() => toggle('diets', k)} />)}</Chips></Field>
+      <Field label="Lean towards"><Chips>{Object.entries(PREFERENCES).map(([k, v]) => <Chip key={k} label={v.label} on={s.prefs.includes(k)} onPress={() => toggle('prefs', k)} />)}</Chips></Field>
+      <T muted size={13}>For halal, buy halal-certified meat. Boerewors counts as containing pork; stock cubes, oats and soy sauce count as containing gluten.</T>
+    </Section>
+    <Section title="Your prices" lead="Base prices are Checkers. Type what you actually pay and the plan will use it.">
+      <View style={{ borderWidth: 1, borderColor: t.line, borderRadius: 14, overflow: 'hidden' }}>
+        {Object.entries(INGREDIENTS).sort((a, c) => a[1].aisle.localeCompare(c[1].aisle)).map(([id, ing]) => {
+          const head = ing.aisle !== aisle ? (aisle = ing.aisle) : null;
+          return <View key={id}>
+            {head && <T muted size={13} font="bold" style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 }}>{head}</T>}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: head ? 0 : 1, borderColor: t.line }}>
+              <T size={14} style={{ flex: 1 }}>{ing.name}</T>
+              <View style={{ width: 110 }}><NumInput align="right" value={data.overrides[id]} placeholder={priceOf(id, 'checkers', priceFeed, null).toFixed(2)} onChange={v => update(d => { if (v === '') delete d.overrides[id]; else d.overrides[id] = Number(v); })} /></View>
+            </View>
+          </View>;
+        })}
+      </View>
+    </Section>
+    <Section title="Account">
+      {user ? <><T>Signed in as {user.email}. Your plans sync between devices.</T><Btn title="Sign out" onPress={onSignOut} style={{ alignSelf: 'flex-start' }} /></>
+        : <T muted size={13.5}>{firebaseReady ? 'You\'re not signed in, so plans are saved on this device only.' : 'Plans are saved on this device.'}</T>}
+    </Section>
   </View>;
 }
 
-function Sheet({ sheet, data, update, priceFeed, close }) {
+// ---------- sheet ----------
+function Sheet({ sheet, data, update, priceFeed, close, toast }) {
   const t = useT();
+  const { width } = useWindowDimensions();
   if (!sheet) return null;
   const s = data.settings;
   let body = null;
   if (sheet.type === 'swap') {
     const [d, slot] = sheet.key.split(':');
+    const cur = buildList(data.plan, s, priceFeed, data.overrides).total;
     const alts = alternatives(data.plan, +d, slot, s, priceFeed, data.overrides);
-    body = <><T bold style={{ fontSize: 17, marginBottom: 8 }}>Swap {DAYS[d]} {slot}</T>
-      {alts.map(a => <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s); x.locked[sheet.key] = a.recipe.id; }); close(); }}
-        style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line }}>
-        <View style={{ flex: 1 }}><T>{a.recipe.name}</T><T small muted>{a.nutrition.protein} g protein · {a.nutrition.kcal} kcal · {a.recipe.mins} min</T></View>
-        <T small>week {money(a.total)}</T></TouchableOpacity>)}</>;
+    body = <><H size={22}>Swap {DAYS[d]} {slot}</H><T muted size={14} style={{ marginBottom: 10 }}>Sorted by what it does to this week's total.</T>
+      {alts.map(a => {
+        const dl = Math.round(a.total - cur);
+        return <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s); x.locked[sheet.key] = a.recipe.id; }); close(); toast('Meal swapped and kept'); }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderColor: t.line }}>
+          <View style={{ flex: 1 }}><T font="semi">{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal</T></View>
+          <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
+        </TouchableOpacity>;
+      })}</>;
   } else if (sheet.type === 'recipe') {
-    const r = recipeById(sheet.id), n = recipeNutrition(r);
-    body = <><T bold style={{ fontSize: 17 }}>{r.name}</T><T small muted>{r.mins} min · per person {n.protein} g protein · {n.kcal} kcal</T>
-      <T bold small style={{ marginTop: 12 }}>Ingredients for {s.householdSize}</T>
-      {Object.entries(r.ing).map(([id, q]) => <T small key={id}>• {INGREDIENTS[id].name} — {formatQty({ qty: q * s.householdSize / 4, unit: INGREDIENTS[id].unit })}</T>)}
-      <T bold small style={{ marginTop: 12 }}>Method</T>
-      {r.steps.map((x, i) => <T small key={i}>{i + 1}. {x}</T>)}</>;
+    const r = recipeById(sheet.id), n = recipeNutrition(r), hh = s.householdSize;
+    body = <><H size={22}>{r.name}</H><T muted size={14}>{r.mins} minutes. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
+      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients for {plural(hh, 'person')}</H>
+      {Object.entries(r.ing).map(([id, q]) => <View key={id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderColor: t.line }}>
+        <T>{INGREDIENTS[id].name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: INGREDIENTS[id].unit })}</T></View>)}
+      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Method</H>
+      {r.steps.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
+        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}><T size={13} font="bold" color={t.accent}>{i + 1}</T></View>
+        <T style={{ flex: 1 }}>{x}</T></View>)}</>;
   } else if (sheet.type === 'text') {
-    body = <><T bold style={{ fontSize: 17, marginBottom: 8 }}>Grocery list</T><TextInput multiline editable={false} value={listAsText(buildList(data.plan, s, priceFeed, data.overrides), s)} style={{ color: t.ink, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 12, minHeight: 240 }} /></>;
+    body = <><H size={22}>Grocery list</H><T muted size={14} style={{ marginBottom: 10 }}>Select all and paste into WhatsApp or Notes.</T>
+      <TextInput multiline editable={false} value={listAsText(buildList(data.plan, s, priceFeed, data.overrides), s)}
+        style={{ color: t.ink, fontFamily: FONTS.slip, fontSize: 12.5, minHeight: 260, backgroundColor: t.bg, borderRadius: 12, padding: 12 }} /></>;
   }
-  return <Modal transparent animationType="slide" visible onRequestClose={close}>
-    <TouchableOpacity activeOpacity={1} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-      <TouchableOpacity activeOpacity={1} style={{ backgroundColor: t.card, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: '80%', padding: 16 }}>
+  const wide = width >= 820;
+  return <Modal transparent animationType={wide ? 'fade' : 'slide'} visible onRequestClose={close}>
+    <TouchableOpacity activeOpacity={1} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(10,18,14,0.45)', justifyContent: wide ? 'center' : 'flex-end', alignItems: 'center' }}>
+      <TouchableOpacity activeOpacity={1} style={{ backgroundColor: t.surface, width: '100%', maxWidth: 560, maxHeight: wide ? '80%' : '86%', borderRadius: 24, borderBottomLeftRadius: wide ? 24 : 0, borderBottomRightRadius: wide ? 24 : 0, padding: 20, paddingTop: wide ? 22 : 10 }}>
+        {!wide && <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: t.line, alignSelf: 'center', marginBottom: 14 }} />}
         <ScrollView>{body}</ScrollView>
-        <Btn title="Close" onPress={close} style={{ marginTop: 12 }} />
+        <Btn title="Close" onPress={close} style={{ marginTop: 14, alignSelf: 'flex-start' }} />
       </TouchableOpacity>
     </TouchableOpacity>
   </Modal>;
 }
 
 // ---------- root ----------
-const TABS = [['plan', '🍽️', 'Plan'], ['list', '🛒', 'List'], ['fitness', '💪', 'Fitness'], ['settings', '⚙️', 'Settings']];
+const TABS = [['plan', 'Plan'], ['list', 'Groceries'], ['fitness', 'Fitness'], ['settings', 'Settings']];
+
+function TabBar({ tab, setTab, wide }) {
+  const t = useT();
+  if (wide) return <View style={{ flexDirection: 'row', backgroundColor: t.sunk, borderRadius: 99, padding: 4 }}>
+    {TABS.map(([id, l]) => { const on = tab === id; return <TouchableOpacity key={id} onPress={() => setTab(id)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 99, backgroundColor: on ? t.surface : 'transparent' }, on && shadow]}>
+      <Icon name={id} size={18} color={on ? t.accent : t.muted} /><T size={13.5} font="semi" color={on ? t.accent : t.muted}>{l}</T></TouchableOpacity>; })}
+  </View>;
+  return <SafeAreaView edges={['bottom']} style={{ flexDirection: 'row', backgroundColor: t.surface, borderTopWidth: 1, borderColor: t.line, paddingHorizontal: 8, paddingTop: 6 }}>
+    {TABS.map(([id, l]) => { const on = tab === id; return <TouchableOpacity key={id} onPress={() => setTab(id)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', gap: 2, paddingBottom: 6 }}>
+      <View style={{ width: 52, height: 30, borderRadius: 99, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.accentSoft : 'transparent' }}><Icon name={id} color={on ? t.accent : t.muted} /></View>
+      <T size={12} font="semi" color={on ? t.accent : t.muted}>{l}</T></TouchableOpacity>; })}
+  </SafeAreaView>;
+}
 
 function Main() {
   const scheme = useColorScheme();
   const theme = scheme === 'dark' ? DARK : LIGHT;
-  const [user, setUser] = useState(undefined); // undefined = still checking
+  const { width } = useWindowDimensions();
+  const wide = width >= 820, narrow = width < 560;
+  const [user, setUser] = useState(undefined);
   const [guest, setGuest] = useState(!firebaseReady);
   const [data, setData] = useState(null);
   const [priceFeed, setPriceFeed] = useState(null);
-  const [tab, setTab] = useState('plan');
+  const [tab, setTabRaw] = useState('plan');
+  const [day, setDay] = useState(todayIdx());
   const [sheet, setSheet] = useState(null);
   const [msg, setMsg] = useState(null);
   const scroll = useRef(null);
+  const setTab = id => { setTabRaw(id); scroll.current?.scrollTo({ y: 0, animated: false }); };
 
   useEffect(() => watchUser(u => setUser(u || null)), []);
   useEffect(() => { loadPriceFeed().then(setPriceFeed); }, []);
   useEffect(() => {
     if (user === undefined && firebaseReady) return;
     if (!user && !guest) return;
-    loadState(user).then(saved => setData({
-      settings: mergeSettings(saved?.settings), plan: saved?.plan || null,
-      locked: saved?.locked || {}, overrides: saved?.overrides || {}, checked: saved?.checked || {},
-    }));
+    loadState(user).then(saved => {
+      const d = { settings: mergeSettings(saved?.settings), plan: saved?.plan || null, locked: saved?.locked || {}, overrides: saved?.overrides || {}, checked: saved?.checked || {} };
+      if (!d.plan) d.plan = generatePlan(d.settings, null, d.overrides, {}).plan; // open on a real week, not an empty screen
+      setData(d);
+    });
   }, [user, guest]);
 
-  const toast = m => { setMsg(m); setTimeout(() => setMsg(null), 2200); };
-  const update = fn => setData(prev => {
-    const next = JSON.parse(JSON.stringify(prev)); fn(next); saveState(user, next); return next;
-  });
-  const regenerate = keepLocks => {
-    const res = generatePlan(data.settings, priceFeed, data.overrides, { locked: keepLocks ? data.locked : {} });
-    update(d => { d.plan = res.plan; d.checked = {}; if (!keepLocks) d.locked = {}; });
-    setTab('plan'); scroll.current?.scrollTo({ y: 0, animated: false });
-    if (res.warning) toast(res.warning); else if (res.overBudget) toast('Cheapest plan found is over budget');
+  const toast = m => { setMsg(m); setTimeout(() => setMsg(null), 2400); };
+  const update = fn => setData(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); saveState(user, next); return next; });
+  const regenerate = (keepLocks, quiet) => {
+    setData(prev => {
+      const res = generatePlan(prev.settings, priceFeed, prev.overrides, { locked: keepLocks ? prev.locked : {} });
+      const next = { ...prev, plan: res.plan, checked: {}, locked: keepLocks ? prev.locked : {} };
+      saveState(user, next);
+      if (!quiet) setTimeout(() => toast(res.warning || (res.overBudget ? 'This is the cheapest week we could find, and it\'s still over budget' : 'New week planned')), 0);
+      return next;
+    });
+    if (!quiet) setTab('plan');
   };
 
-  let content;
-  if (firebaseReady && user === undefined) content = <ActivityIndicator style={{ marginTop: 80 }} />;
-  else if (!user && !guest) content = <LoginScreen onGuest={() => setGuest(true)} />;
-  else if (!data) content = <ActivityIndicator style={{ marginTop: 80 }} />;
+  let gate = null;
+  if (firebaseReady && user === undefined) gate = <ActivityIndicator style={{ marginTop: 80 }} color={theme.accent} />;
+  else if (!user && !guest) gate = <LoginScreen onGuest={() => setGuest(true)} />;
+  else if (!data) gate = <ActivityIndicator style={{ marginTop: 80 }} color={theme.accent} />;
 
   const s = data?.settings;
   return <ThemeCtx.Provider value={theme}>
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top', 'left', 'right']}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      {content || <>
-        <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: theme.line }}>
-          <T bold style={{ fontSize: 18 }}>Weekly Meal Planner SA</T>
-          <T muted small>{s.householdSize} {s.householdSize === 1 ? 'person' : 'people'} · {money(s.weeklyBudget)}/week{s.diets.length ? ' · ' + s.diets.map(d => DIETS[d].label).join(', ') : ''}</T>
-        </View>
-        <ScrollView ref={scroll} contentContainerStyle={{ padding: 14, paddingBottom: 30, maxWidth: 720, width: '100%', alignSelf: 'center' }}>
-          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} />}
+      {gate || <>
+        <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, maxWidth: 760, width: '100%', alignSelf: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: wide ? 22 : 12, paddingBottom: wide ? 18 : 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
+              <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' }}><Icon name="list" color={theme.accentInk} /></View>
+              <View style={{ flexShrink: 1 }}><H size={17}>Weekly Meal Planner</H>
+                <T muted size={12.5} numberOfLines={1}>{plural(s.householdSize, 'person')}, {money(s.weeklyBudget)} a week{s.diets.length ? ', ' + s.diets.map(d => DIETS[d].label.toLowerCase()).join(', ') : ''}</T></View>
+            </View>
+            {wide && <TabBar tab={tab} setTab={setTab} wide />}
+          </View>
+          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} />}
           {tab === 'list' && <ListScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} toast={toast} />}
           {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} />}
           {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={async () => { await signOut(); setGuest(false); setData(null); }} />}
         </ScrollView>
-        <SafeAreaView edges={['bottom']} style={{ flexDirection: 'row', backgroundColor: theme.card, borderTopWidth: 1, borderColor: theme.line }}>
-          {TABS.map(([id, ic, l]) => <TouchableOpacity key={id} onPress={() => { setTab(id); scroll.current?.scrollTo({ y: 0, animated: false }); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}>
-            <Text style={{ fontSize: 20 }}>{ic}</Text><Text style={{ fontSize: 12, color: tab === id ? theme.brand : theme.muted, fontWeight: tab === id ? '700' : '400' }}>{l}</Text></TouchableOpacity>)}
-        </SafeAreaView>
-        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} />
-        {msg && <View style={{ position: 'absolute', bottom: 90, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 }}><Text style={{ color: theme.bg }}>{msg}</Text></View>}
+        {!wide && <TabBar tab={tab} setTab={setTab} />}
+        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} />
+        {msg && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[{ position: 'absolute', bottom: wide ? 32 : 96, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }, shadow]}>
+          <T font="semi" size={14} color={theme.bg}>{msg}</T></View>}
       </>}
     </SafeAreaView>
   </ThemeCtx.Provider>;
 }
 
-export default function App() { return <SafeAreaProvider><Main /></SafeAreaProvider>; }
+export default function App() {
+  const [loaded] = useFonts({
+    BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
+    Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold,
+    IBMPlexMono_400Regular, IBMPlexMono_600SemiBold,
+  });
+  if (!loaded) return null;
+  return <SafeAreaProvider><Main /></SafeAreaProvider>;
+}

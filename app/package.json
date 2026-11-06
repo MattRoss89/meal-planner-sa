@@ -13,6 +13,9 @@
     "sync-core": "node -e \"require('fs').copyFileSync('../shared/core.js','src/core.js')\""
   },
   "dependencies": {
+    "@expo-google-fonts/bricolage-grotesque": "*",
+    "@expo-google-fonts/figtree": "*",
+    "@expo-google-fonts/ibm-plex-mono": "*",
     "@expo/metro-runtime": "*",
     "@react-native-async-storage/async-storage": "*",
     "expo": "^54.0.0",
@@ -20,6 +23,7 @@
     "expo-clipboard": "*",
     "expo-crypto": "*",
     "expo-dev-client": "*",
+    "expo-font": "*",
     "expo-status-bar": "*",
     "expo-web-browser": "*",
     "firebase": "^11.0.0",
@@ -27,6 +31,7 @@
     "react-dom": "*",
     "react-native": "*",
     "react-native-safe-area-context": "*",
+    "react-native-svg": "*",
     "react-native-web": "*"
   },
   "devDependencies": {
