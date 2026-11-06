@@ -199,7 +199,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
       <div class="facts" aria-label="At a glance">
         <div><b id="f-recipes"></b><span class="cap soft">Local recipes</span></div>
         <div><b>5</b><span class="cap soft">Stores compared</span></div>
-        <div><b>R0</b><span class="cap soft">To use</span></div>
+        <div><b>30 days</b><span class="cap soft">Free, then R20/month</span></div>
       </div>
     </div>
 
@@ -240,7 +240,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
   <p class="cap kicker" style="margin-top:22px">Prices</p>
   <div class="money-grid">
     <div><div class="huge" id="m-total"></div><p class="huge-cap" id="m-cap"></p></div>
-    <div><div class="bars" id="m-bars"></div><p class="bars-note">The same week, priced at each store. Prices refresh on the 1st of every month.</p></div>
+    <div><div class="bars" id="m-bars"></div><p class="bars-note">Estimates, not quotes. Base prices are regular Checkers shelf prices, refreshed on the 1st of each month; other stores are estimated with an index from PriceCheck&rsquo;s March 2025 basket comparison, as reported by BusinessTech. Specials and regional prices will differ.</p></div>
   </div>
 </div></section>
 
@@ -248,7 +248,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
   <p class="cap kicker soft">Training</p>
   <div class="band-top">
     <h2>Easy run on Monday. Long run on Saturday. Your plate follows.</h2>
-    <p>Add your week of sessions and Tafel sets a daily protein target, scales your portions on the days you burn more, and tops up the list with eggs, yoghurt or tuna when meals fall short. Everyone else at the table eats as normal.</p>
+    <p>Add your week of sessions and Tafel estimates a daily protein target, scales your portions on the days you burn more, and tops up the list with eggs, yoghurt or tuna when meals fall short. Everyone else at the table eats as normal.</p>
   </div>
   <div class="week" id="t-week"></div>
   <div class="band-foot"><div><b id="t-protein"></b><span class="soft">protein a day for a 75 kg runner building strength</span></div><div><b id="t-total"></b><span class="soft">kcal across the week, rest days included</span></div></div>
@@ -261,20 +261,20 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
 
 <section style="padding-top:0"><div class="wrap">
   <div class="notes">
-    <div class="note"><h3>Your data stays yours</h3><p>Sign in with Google and your plans follow you from phone to laptop. No one else can see them, and without an account nothing leaves your browser.</p></div>
-    <div class="note"><h3>Straight to the store</h3><p>Every item links to its search at Checkers, Pick n Pay, Woolworths, Shoprite or Spar. Shop there as you always do, signed in to your own account.</p></div>
+    <div class="note"><h3>Your data stays yours</h3><p>Sign in with Google and your plans follow you from phone to laptop. No one else can see them, we never sell them, and you can ask us to delete everything at any time. Read the <a class="u" href="https://meal-planner-sa.web.app/privacy.html">privacy policy</a>.</p></div>
+    <div class="note"><h3>Straight to the store</h3><p>Every item links to its search at Checkers, Pick n Pay, Woolworths, Shoprite or Spar. Shop there as you always do, signed in to your own account. Tafel isn&rsquo;t affiliated with any of them.</p></div>
     <div class="note"><h3>Honest about prices</h3><p>Totals are estimates from regular shelf prices, refreshed monthly. Specials will usually bring your bill in lower, never higher. Pay something different? Enter your own price and every plan uses it.</p></div>
-    <div class="note"><h3>Free</h3><p>No trial, no card, no catch. Open it in your browser and add it to your home screen.</p></div>
+    <div class="note"><h3>R20 a month, first month free</h3><p>Your first 30 days cost nothing and need no card. After that it&rsquo;s R20 a month through Paystack, and you can cancel in two taps.</p></div>
   </div>
 </div></section>
 
 <section class="close"><div class="wrap" style="padding-top:22px">
   <h2>Sunday's sorted. What's for dinner is too.</h2>
-  <div class="row"><a class="btn" href="https://meal-planner-sa.web.app">Plan my week <span class="ar" aria-hidden="true"></span></a><span class="soft">Works on any phone or computer.</span></div>
+  <div class="row"><a class="btn" href="https://meal-planner-sa.web.app">Plan my week <span class="ar" aria-hidden="true"></span></a><span class="soft">First month free, then R20 a month. Works on any phone or computer.</span></div>
 </div></section>
 </main>
 
-<footer><div class="wrap"><span class="word" style="font-size:13px">TAFEL</span><span>Made in Cape Town. Prices are estimates, not quotes.</span></div></footer>
+<footer><div class="wrap"><span class="word" style="font-size:13px">TAFEL</span><span><a class="u" href="https://meal-planner-sa.web.app/terms.html">Terms</a> &nbsp; <a class="u" href="https://meal-planner-sa.web.app/privacy.html">Privacy</a> &nbsp; <a class="u" href="https://meal-planner-sa.web.app/paia.html">PAIA</a></span><span>Made in Cape Town. Prices are estimates, not quotes. Not affiliated with any retailer.</span></div></footer>
 
 <script>
 /*__CORE__*/
@@ -320,7 +320,7 @@ function plan(){
   const cheapest=Object.entries(list.byStore).sort((a,b)=>a[1]-b[1])[0];
   const over=list.total>demo.budget;
   const t=res.targets;
-  document.getElementById('d-note').innerHTML=(over?`<span class="over">${money(list.total-demo.budget)} over. This is the leanest week we could build at that budget.</span> `:`${money(demo.budget-list.total)} to spare, all three meals a day. `)+(t?`Portions sized for ${t.protein} g protein a day. `:'')+`Cheapest at ${shortStore(cheapest[0])}.`;
+  document.getElementById('d-note').innerHTML=(over?`<span class="over">${money(list.total-demo.budget)} over. This is the leanest week we could build at that budget.</span> `:`${money(demo.budget-list.total)} to spare, all three meals a day. `)+(t?`Portions sized for ${t.protein} g protein a day. `:'')+`Estimated cheapest at ${shortStore(cheapest[0])}.`;
 }
 plan();
 
@@ -329,7 +329,7 @@ plan();
   const res=generatePlan(mergeSettings({householdSize:2,weeklyBudget:1200}),null,null,{seed:42,iterations:200});
   const b=res.list.byStore,sorted=Object.entries(b).sort((x,y)=>x[1]-y[1]),max=sorted[sorted.length-1][1];
   document.getElementById('m-total').textContent=money(sorted[0][1]);
-  document.getElementById('m-cap').innerHTML=`Breakfast, lunch and dinner for two people, for seven days, at ${shortStore(sorted[0][0])}. The identical list is ${money(max-sorted[0][1])} more at ${shortStore(sorted[sorted.length-1][0])}.`;
+  document.getElementById('m-cap').innerHTML=`Our estimate for breakfast, lunch and dinner for two people, for seven days, at ${shortStore(sorted[0][0])}. On our price index the same list comes to about ${money(max-sorted[0][1])} more at ${shortStore(sorted[sorted.length-1][0])}.`;
   const bars=document.getElementById('m-bars');
   bars.innerHTML=sorted.map(([k,v],i)=>`<div class="bar ${i===0?'best':''}"><span>${shortStore(k)}</span><span class="t"><i style="width:0"></i></span><span class="v">${money(v)}</span></div>`).join('');
   const grow=()=>bars.querySelectorAll('.t i').forEach((el,i)=>el.style.width=(sorted[i][1]/max*100)+'%');

@@ -6,12 +6,13 @@ import {
   getAuth, initializeAuth, onAuthStateChanged, signOut as fbSignOut,
   GoogleAuthProvider, signInWithPopup, signInWithCredential,
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { FIREBASE_CONFIG, PRICE_FEED_URL } from './config';
 
 export const firebaseReady = !FIREBASE_CONFIG.apiKey.startsWith('YOUR_');
 
-let app, auth, db;
+let app, auth, db, fns;
 if (firebaseReady) {
   app = getApps()[0] || initializeApp(FIREBASE_CONFIG);
   if (Platform.OS === 'web') {
@@ -24,6 +25,7 @@ if (firebaseReady) {
     catch (e) { auth = getAuth(app); }
   }
   db = getFirestore(app);
+  fns = getFunctions(app, 'africa-south1');
 }
 
 export function watchUser(cb) {
@@ -73,4 +75,32 @@ export async function loadPriceFeed() {
   if (!PRICE_FEED_URL) return null;
   try { const r = await fetch(PRICE_FEED_URL); return r.ok ? await r.json() : null; }
   catch (e) { return null; }
+}
+
+// ---------- Trial and subscription ----------
+export const TRIAL_DAYS = 30;
+export const PRICE = 'R20';
+export const APP_URL = 'https://meal-planner-sa.web.app';
+
+const call = name => async data => (await httpsCallable(fns, name)(data)).data;
+export const startTrial = () => call('startTrial')();
+export const createCheckout = () => call('createCheckout')();
+export const manageSubscription = () => call('manageSubscription')();
+
+// The account record (trial dates, subscription) is written only by the server.
+export function watchAccount(user, cb) {
+  if (!db || !user) { cb(null); return () => {}; }
+  return onSnapshot(doc(db, 'accounts', user.uid), s => cb(s.exists() ? s.data() : null), () => cb(null));
+}
+
+// What this account can do right now.
+export function entitlement(acct, now = Date.now()) {
+  if (!acct) return { ok: false, kind: 'unknown' };
+  const sub = acct.subscription;
+  const day = 864e5;
+  if (sub?.status === 'active') return { ok: true, kind: 'subscribed', until: sub.nextPaymentAt };
+  if (sub?.status === 'cancelling' && (sub.nextPaymentAt || 0) > now) return { ok: true, kind: 'cancelling', until: sub.nextPaymentAt };
+  if (sub?.status === 'past_due' && (sub.nextPaymentAt || 0) + 3 * day > now) return { ok: true, kind: 'past_due', until: sub.nextPaymentAt };
+  if ((acct.trialEndsAt || 0) > now) return { ok: true, kind: 'trial', until: acct.trialEndsAt, daysLeft: Math.ceil((acct.trialEndsAt - now) / day) };
+  return { ok: false, kind: sub ? 'lapsed' : 'trial_over' };
 }

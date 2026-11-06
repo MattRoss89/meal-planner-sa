@@ -1,11 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each signed-in person can only read and write their own document.
+    // Each person's planner data: only they can read or write it.
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
-    // Public price feed: anyone can read; only you update it (from the Firebase console or admin tools).
+    // Trial and subscription records: the owner can read; only Tafel's server functions can write.
+    match /accounts/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // Public price feed: anyone can read; nobody writes from the app.
     match /prices/{doc} {
       allow read: if true;
       allow write: if false;

@@ -259,7 +259,7 @@ function summary(list){
     <div><div class="cap soft">Groceries this week at ${shortStore(s.store)}</div><div class="total">${money(t)}<small>of ${money(b)}</small></div></div>
     <div class="state ${over?'over':''}">${over?money(t-b)+' over budget':money(b-t)+' to spare'}</div>
     <div class="line ${over?'over':''}" role="meter" aria-label="Spend against budget" aria-valuemin="0" aria-valuemax="${b}" aria-valuenow="${Math.round(t)}"><i style="width:${Math.min(100,t/b*100)}%"></i></div>
-    <div class="note soft">${saving>5?`The same list costs about ${money(saving)} less at ${shortStore(cheapest[0])}.`:`${shortStore(s.store)} is the most affordable store for this list.`}</div>
+    <div class="note soft">${saving>5?`We estimate the same list costs about ${money(saving)} less at ${shortStore(cheapest[0])}.`:`${shortStore(s.store)} is the most affordable store for this list.`}</div>
   </div>`;
 }
 
@@ -313,7 +313,7 @@ function renderList(){
   lab+=`</div><div class="actions"><button class="btn" data-act="copy">Copy list</button><button class="link" data-act="showtext">View as text</button>${Object.keys(state.checked).length?`<button class="link soft" data-act="uncheck">Untick all</button>`:''}</div>`;
   h+=sec('The list','',lab);
   const max=Math.max(...Object.values(list.byStore));
-  h+=sec('Compared','',`<div class="cmp">`+Object.entries(list.byStore).sort((a,c)=>a[1]-c[1]).map(([k,v])=>`<div class="cmp-row ${k===s.store?'cur':''}"><span>${shortStore(k)}</span><span class="track"><i style="width:${v/max*100}%"></i></span><span class="v">${money(v)}</span></div>`).join('')+`</div><p class="para">${priceFeed&&priceFeed.updatedAt?'Prices last refreshed '+new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA',{day:'numeric',month:'long'})+'. ':'Prices are estimates until the first monthly refresh. '}Other stores are estimated from a basket price index. Sixty60, PnP asap! and Woolworths Dash don't let other apps sign in, so each item links to the store's own search.</p>`);
+  h+=sec('Compared','',`<div class="cmp">`+Object.entries(list.byStore).sort((a,c)=>a[1]-c[1]).map(([k,v])=>`<div class="cmp-row ${k===s.store?'cur':''}"><span>${shortStore(k)}</span><span class="track"><i style="width:${v/max*100}%"></i></span><span class="v">${money(v)}</span></div>`).join('')+`</div><p class="para">${priceFeed&&priceFeed.updatedAt?'Prices last refreshed '+new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA',{day:'numeric',month:'long'})+'. ':'Prices are estimates until the first monthly refresh. '}Other stores are estimated with an index from PriceCheck's March 2025 basket comparison, so specials and regional prices will differ. Tafel isn't affiliated with any retailer. Sixty60, PnP asap! and Woolworths Dash don't let other apps sign in, so each item links to the store's own search.</p>`);
   return h;
 }
 

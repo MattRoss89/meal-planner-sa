@@ -1,0 +1,11 @@
+{
+  "_note": "Fill in the three TODO values, then run: node legal/build.mjs  (or push; CI builds them). These details are published.",
+  "name": "Matthew Rossouw",
+  "tradingAs": "Tafel",
+  "legalStatus": "Sole proprietor",
+  "email": "TODO: contact email",
+  "physicalAddress": "TODO: physical address for legal notices (ECTA s43)",
+  "phone": "TODO: contact phone number",
+  "effectiveDate": "6 November 2026",
+  "appUrl": "https://meal-planner-sa.web.app"
+}

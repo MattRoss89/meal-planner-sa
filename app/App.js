@@ -18,6 +18,7 @@ import {
 import {
   firebaseReady, watchUser, signInWithGoogleWeb, signInWithGoogleIdToken, signOut,
   loadState, saveState, loadPriceFeed,
+  startTrial, createCheckout, manageSubscription, watchAccount, entitlement, TRIAL_DAYS, PRICE, APP_URL,
 } from './src/backend';
 import { GOOGLE_CLIENT_IDS } from './src/config';
 import {
@@ -34,9 +35,12 @@ const todayIdx = () => (new Date().getDay() + 6) % 7;
 const weekStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - todayIdx()); return d; };
 const dayDate = i => { const d = weekStart(); d.setDate(d.getDate() + i); return d; };
 const cap = s => s[0].toUpperCase() + s.slice(1);
+const openLegal = page => Linking.openURL(`${APP_URL}/${page}.html`);
+const fmtDate = ms => new Date(ms).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' });
+async function openUrl(url) { if (Platform.OS === 'web') window.location.assign(url); else await WebBrowser.openBrowserAsync(url); }
 
 // ---------- login ----------
-function LoginScreen({ onGuest }) {
+function LoginScreen() {
   const t = useT();
   const [err, setErr] = useState(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(GOOGLE_CLIENT_IDS);
@@ -53,9 +57,9 @@ function LoginScreen({ onGuest }) {
     <H size={38} style={{ letterSpacing: -0.5 }}>Your week of meals, costed before you shop.</H>
     <T muted size={16} style={{ marginBottom: 16 }}>Plans that fit your budget and diet, a grocery list priced for Checkers, Pick n Pay, Woolworths, Shoprite and Spar, and portions sized to your training.</T>
     <Btn kind="primary" title="Continue with Google" onPress={go} style={{ opacity: Platform.OS === 'web' || request ? 1 : 0.5, paddingVertical: 14 }} />
-    <Btn title="Use without an account" onPress={onGuest} style={{ paddingVertical: 14 }} />
     {err && <T size={13.5} color={t.bad}>{err}</T>}
-    <T muted size={13}>Signing in keeps your settings and plans in sync between your phone and the web.</T>
+    <T muted size={13}>Your first {TRIAL_DAYS} days are free, with no card needed. After that Tafel is {PRICE} a month, and you can cancel any time.</T>
+    <T muted size={13}>By continuing you agree to the <T muted size={13} style={{ textDecorationLine: 'underline' }} onPress={() => openLegal('terms')}>terms of use</T> and <T muted size={13} style={{ textDecorationLine: 'underline' }} onPress={() => openLegal('privacy')}>privacy policy</T>.</T>
   </View>;
 }
 
@@ -78,7 +82,7 @@ function Summary({ list, settings }) {
     <Meter value={total} max={b} over={over} />
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
       <T muted size={14} style={{ flex: 1 }}>{saving > 5
-        ? `The same list costs about ${money(saving)} less at ${shortStore(cheapest[0])}.`
+        ? `We estimate the same list costs about ${money(saving)} less at ${shortStore(cheapest[0])}.`
         : `${shortStore(settings.store)} is the most affordable store for this list.`}</T>
     </View>
   </View>;
@@ -240,7 +244,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
         </View>;
       })}
     </View>
-    <T muted size={13} style={{ marginTop: 14 }}>{priceFeed?.updatedAt ? `Prices last refreshed ${new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}. ` : 'Prices are estimates until the first monthly refresh. '}Other stores are estimated from a basket price index. Store accounts can't be linked because Sixty60, PnP asap! and Woolworths Dash don't offer that to other apps, so each item links to the store's own search.</T>
+    <T muted size={13} style={{ marginTop: 14 }}>{priceFeed?.updatedAt ? `Prices last refreshed ${new Date(priceFeed.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}. ` : 'Prices are estimates until the first monthly refresh. '}Other stores are estimated with an index from PriceCheck's March 2025 basket comparison, so specials and regional prices will differ. Tafel isn't affiliated with any retailer. Store accounts can't be linked because Sixty60, PnP asap! and Woolworths Dash don't offer that to other apps, so each item links to the store's own search.</T>
   </View>;
 }
 
@@ -298,7 +302,7 @@ function FitnessScreen({ data, update, regenerate }) {
 }
 
 // ---------- settings ----------
-function SettingsScreen({ data, update, priceFeed, user, onSignOut }) {
+function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing }) {
   const t = useT();
   const s = data.settings;
   const toggle = (k, v) => update(d => { const a = d.settings[k]; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); });
@@ -339,10 +343,8 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut }) {
         })}
       </View>
     </Section>
-    <Section title="Account">
-      {user ? <><T>Signed in as {user.email}. Your plans sync between devices.</T><Btn title="Sign out" onPress={onSignOut} style={{ alignSelf: 'flex-start' }} /></>
-        : <T muted size={13.5}>{firebaseReady ? 'You\'re not signed in, so plans are saved on this device only.' : 'Plans are saved on this device.'}</T>}
-    </Section>
+    {user ? <AccountSection user={user} ent={ent} billing={billing} onSignOut={onSignOut} />
+      : <Section title="Account"><T muted size={13.5}>Plans are saved on this device.</T></Section>}
   </View>;
 }
 
@@ -393,6 +395,64 @@ function Sheet({ sheet, data, update, priceFeed, close, toast }) {
   </Modal>;
 }
 
+// ---------- billing ----------
+function useBilling(user, toast) {
+  const [busy, setBusy] = useState(false);
+  const subscribe = async () => {
+    setBusy(true);
+    try { const { url } = await createCheckout(); await openUrl(url); }
+    catch (e) { toast(e?.message?.includes('already') ? 'You already have an active subscription' : 'Couldn\'t open checkout. Try again in a moment.'); }
+    finally { setBusy(false); }
+  };
+  const manage = async () => {
+    setBusy(true);
+    try { const { url } = await manageSubscription(); await openUrl(url); }
+    catch (e) { toast('Couldn\'t open subscription settings. Try again in a moment.'); }
+    finally { setBusy(false); }
+  };
+  return { busy, subscribe, manage };
+}
+
+function Paywall({ ent, billing, onSignOut }) {
+  const t = useT();
+  const web = Platform.OS === 'web';
+  return <View style={{ flex: 1, justifyContent: 'flex-end', padding: 24, paddingBottom: 40, maxWidth: 520, width: '100%', alignSelf: 'center', gap: 14 }}>
+    <T font="semi" size={15} style={{ letterSpacing: 6, marginBottom: 20 }}>TAFEL</T>
+    <H size={36}>{ent.kind === 'lapsed' ? 'Your subscription has ended.' : 'Your free month is up.'}</H>
+    <T muted size={16}>Keep planning your weeks for {PRICE} a month. Your settings, prices and plans are saved and waiting.</T>
+    {web ? <Btn kind="primary" title={billing.busy ? 'Opening checkout…' : `Subscribe for ${PRICE} a month`} onPress={billing.subscribe} />
+      : <T>Subscribe at {APP_URL.replace('https://', '')}, then come back to the app.</T>}
+    <T muted size={13}>Payments are handled securely by Paystack. Cancel any time from Settings.</T>
+    <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
+      <Btn title="Terms" onPress={() => openLegal('terms')} /><Btn title="Privacy" onPress={() => openLegal('privacy')} /><Btn title="Sign out" onPress={onSignOut} />
+    </View>
+  </View>;
+}
+
+function AccountSection({ user, ent, billing, onSignOut }) {
+  const t = useT();
+  const web = Platform.OS === 'web';
+  let status;
+  if (ent.kind === 'trial') status = `Free trial: ${ent.daysLeft} ${ent.daysLeft === 1 ? 'day' : 'days'} left, until ${fmtDate(ent.until)}.`;
+  else if (ent.kind === 'subscribed') status = `Subscribed at ${PRICE} a month.${ent.until ? ` Next payment ${fmtDate(ent.until)}.` : ''}`;
+  else if (ent.kind === 'cancelling') status = `Cancelled. You have access until ${fmtDate(ent.until)}.`;
+  else if (ent.kind === 'past_due') status = 'Your last payment didn\'t go through. Update your card to keep access.';
+  else status = 'Checking your plan…';
+  const hasSub = ['subscribed', 'cancelling', 'past_due'].includes(ent.kind);
+  return <Section title="Account">
+    <T>Signed in as {user.email}.</T>
+    <T muted size={14}>{status}</T>
+    <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+      {web && ent.kind === 'trial' && <Btn kind="primary" title={`Subscribe now, ${PRICE} a month`} onPress={billing.subscribe} />}
+      {web && hasSub && <Btn title="Manage subscription" onPress={billing.manage} />}
+      <Btn title="Sign out" onPress={onSignOut} />
+    </View>
+    <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
+      <Btn title="Terms of use" onPress={() => openLegal('terms')} /><Btn title="Privacy policy" onPress={() => openLegal('privacy')} /><Btn title="PAIA manual" onPress={() => openLegal('paia')} />
+    </View>
+  </Section>;
+}
+
 // ---------- root ----------
 const TABS = [['plan', 'The week'], ['list', 'Groceries'], ['fitness', 'Training'], ['settings', 'Settings']];
 
@@ -416,7 +476,8 @@ function Main() {
   const { width } = useWindowDimensions();
   const wide = width >= 820, narrow = width < 560;
   const [user, setUser] = useState(undefined);
-  const [guest, setGuest] = useState(!firebaseReady);
+  const [guest, setGuest] = useState(!firebaseReady); // without Firebase (local dev) there are no accounts or billing
+  const [account, setAccount] = useState(undefined);
   const [data, setData] = useState(null);
   const [priceFeed, setPriceFeed] = useState(null);
   const [tab, setTabRaw] = useState('plan');
@@ -427,6 +488,17 @@ function Main() {
   const setTab = id => { setTabRaw(id); scroll.current?.scrollTo({ y: 0, animated: false }); };
 
   useEffect(() => watchUser(u => setUser(u || null)), []);
+  useEffect(() => {
+    if (!user) { setAccount(undefined); return; }
+    startTrial().catch(() => {}); // creates the 30-day trial on first sign-in; does nothing afterwards
+    return watchAccount(user, setAccount);
+  }, [user]);
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search.includes('subscribed=1')) {
+      window.history.replaceState(null, '', window.location.pathname);
+      setTimeout(() => toast('Payment received. Your subscription will show in Settings shortly.'), 800);
+    }
+  }, []);
   useEffect(() => { loadPriceFeed().then(setPriceFeed); }, []);
   useEffect(() => {
     if (user === undefined && firebaseReady) return;
@@ -451,9 +523,14 @@ function Main() {
     if (!quiet) setTab('plan');
   };
 
+  const billing = useBilling(user, toast);
+  // Fail open: until an account record exists (or if billing is offline), never block someone out.
+  const ent = user ? (account ? entitlement(account) : { ok: true, kind: 'unknown' }) : { ok: true, kind: 'guest' };
+  const doSignOut = async () => { await signOut(); setData(null); };
   let gate = null;
   if (firebaseReady && user === undefined) gate = <ActivityIndicator style={{ marginTop: 80 }} color={theme.accent} />;
-  else if (!user && !guest) gate = <LoginScreen onGuest={() => setGuest(true)} />;
+  else if (!user && !guest) gate = <LoginScreen />;
+  else if (user && !ent.ok) gate = <Paywall ent={ent} billing={billing} onSignOut={doSignOut} />;
   else if (!data) gate = <ActivityIndicator style={{ marginTop: 80 }} color={theme.accent} />;
 
   const s = data?.settings;
@@ -469,10 +546,14 @@ function Main() {
             </View>
             {wide && <TabBar tab={tab} setTab={setTab} wide />}
           </View>
+          {ent.kind === 'trial' && ent.daysLeft <= 7 && <TouchableOpacity onPress={() => setTab('settings')} style={{ backgroundColor: theme.accentSoft, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 }}>
+            <T size={13.5}>{ent.daysLeft} {ent.daysLeft === 1 ? 'day' : 'days'} left in your free month. Subscribe in Settings to keep going.</T></TouchableOpacity>}
+          {ent.kind === 'past_due' && <TouchableOpacity onPress={() => setTab('settings')} style={{ backgroundColor: theme.badSoft, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 }}>
+            <T size={13.5} color={theme.bad}>Your last payment didn't go through. Update your card in Settings.</T></TouchableOpacity>}
           {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} />}
           {tab === 'list' && <ListScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} toast={toast} />}
           {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} />}
-          {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={async () => { await signOut(); setGuest(false); setData(null); }} />}
+          {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={doSignOut} ent={ent} billing={billing} />}
         </ScrollView>
         {!wide && <TabBar tab={tab} setTab={setTab} />}
         <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} />

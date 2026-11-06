@@ -24,6 +24,8 @@ jobs:
       - name: Install
         working-directory: app
         run: npm install --no-audit --no-fund --legacy-peer-deps
+      - name: Build legal pages
+        run: node legal/build.mjs
       - name: Build web
         working-directory: app
         run: |
@@ -41,4 +43,18 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: app
+          entryPoint: .
+      # Billing (Cloud Functions + database rules). Turned on by setting the repo variable DEPLOY_BILLING to true,
+      # after the Paystack secret exists in Secret Manager and the plan code is in the PAYSTACK_PLAN_CODE variable.
+      - name: Deploy billing functions and database rules
+        if: ${{ vars.DEPLOY_BILLING == 'true' }}
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PLAN_CODE: ${{ vars.PAYSTACK_PLAN_CODE }}
+        run: |
+          echo "$SA_JSON" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          printf 'PAYSTACK_PLAN_CODE=%s\nAPP_URL=https://meal-planner-sa.web.app\n' "$PLAN_CODE" > functions/.env
+          (cd functions && npm install --no-audit --no-fund)
+          npx --yes firebase-tools@14 deploy --only functions,firestore:rules --project meal-planner-sa --non-interactive --force
+          rm -f /tmp/sa.json

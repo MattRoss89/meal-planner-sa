@@ -70,3 +70,19 @@ None of these retailers offers a public API for outside apps to sign in or fill 
 - `firestore.rules`: each user can only read and write their own data.
 
 Prices are estimates and the nutrition figures are approximate. This is not medical or dietary advice.
+
+## Billing: 30 days free, then R20/month (Paystack)
+Billing runs on the web app. Apple and Google require their own in-app purchase systems for digital subscriptions inside store apps, so the phone apps send people to the website to subscribe. Add Apple/Google in-app purchases (e.g. with RevenueCat) before submitting to the stores.
+
+How it works: on first Google sign-in the `startTrial` function records a 30-day trial in `accounts/{uid}`, using server time. When the trial ends, the app shows a paywall. **Subscribe** opens Paystack checkout for your monthly plan, and Paystack's webhook updates `accounts/{uid}.subscription`. Settings → Account → **Manage subscription** opens Paystack's page for cancelling or changing the card. Only the server can write `accounts/*`.
+
+One-time setup:
+1. **Paystack:** create an account at paystack.com and complete business verification (sole proprietor is fine). Then go to Products → Plans → **Create plan**: R20, monthly, ZAR. Copy the plan code (`PLN_…`).
+2. **Firebase Blaze plan:** Firebase console → Upgrade → Blaze (pay-as-you-go). Cloud Functions need it, but usage at this size stays within the free allowance.
+3. **Secret key:** Google Cloud console → Security → **Secret Manager** → Create secret named `PAYSTACK_SECRET_KEY`, with your Paystack **live secret key** as the value. Never commit it or paste it into chat.
+4. **Deploy permissions:** in IAM, give the `firebase-adminsdk-…` service account these extra roles: Cloud Functions Admin, Service Account User, Secret Manager Secret Accessor, Firebase Rules Admin, Cloud Build Editor, Artifact Registry Administrator.
+5. **GitHub variables** (repo → Settings → Secrets and variables → Actions → Variables): `PAYSTACK_PLAN_CODE` = your plan code, and `DEPLOY_BILLING` = `true`. The next push deploys the functions and the database rules.
+6. **Webhook:** Paystack → Settings → API Keys & Webhooks → Webhook URL: `https://africa-south1-meal-planner-sa.cloudfunctions.net/paystackWebhook`
+
+## Legal pages
+`legal/details.json` holds the public contact details. Fill in the TODO values; the pages (`/privacy.html`, `/terms.html`, `/paia.html`) rebuild on every deploy.
