@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Meal Planner SA",
+    "name": "Tafel",
     "slug": "meal-planner-sa",
     "scheme": "mealplannersa",
     "version": "1.0.0",
@@ -16,9 +16,11 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "name": "Meal Planner SA",
-      "themeColor": "#1f7a4d"
+      "name": "Tafel",
+      "themeColor": "#fbf9f3"
     },
-    "plugins": ["expo-web-browser"]
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

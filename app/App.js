@@ -8,9 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { useFonts, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
-import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold } from '@expo-google-fonts/figtree';
-import { IBMPlexMono_400Regular, IBMPlexMono_600SemiBold } from '@expo-google-fonts/ibm-plex-mono';
+import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium } from '@expo-google-fonts/hanken-grotesk';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
@@ -50,8 +48,8 @@ function LoginScreen({ onGuest }) {
     catch (e) { setErr('Google sign-in didn\'t finish. Try again, or continue without an account.'); }
   };
   return <View style={{ flex: 1, justifyContent: 'flex-end', padding: 24, paddingBottom: 40, maxWidth: 520, width: '100%', alignSelf: 'center', gap: 12 }}>
-    <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center' }}><Icon name="list" size={28} color={t.accentInk} /></View>
-    <H size={34} heavy>Your week of meals, costed before you shop.</H>
+    <T font="semi" size={15} style={{ letterSpacing: 6, marginBottom: 24 }}>TAFEL</T>
+    <H size={38} style={{ letterSpacing: -0.5 }}>Your week of meals, costed before you shop.</H>
     <T muted size={16} style={{ marginBottom: 16 }}>Plans that fit your budget and diet, a grocery list priced for Checkers, Pick n Pay, Woolworths, Shoprite and Spar, and portions sized to your training.</T>
     <Btn kind="primary" title="Continue with Google" onPress={go} style={{ opacity: Platform.OS === 'web' || request ? 1 : 0.5, paddingVertical: 14 }} />
     <Btn title="Use without an account" onPress={onGuest} style={{ paddingVertical: 14 }} />
@@ -66,15 +64,15 @@ function Summary({ list, settings }) {
   const b = settings.weeklyBudget, total = list.total, over = total > b;
   const cheapest = Object.entries(list.byStore).sort((a, c) => a[1] - c[1])[0];
   const saving = list.byStore[settings.store] - cheapest[1];
-  return <View style={[{ backgroundColor: t.surface, borderRadius: 20, padding: 18, gap: 14 }, shadow]}>
+  return <View style={[{ backgroundColor: t.surface, borderRadius: 0, padding: 18, gap: 14 }, shadow]}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
       <View>
         <T muted size={13}>Groceries this week at {shortStore(settings.store)}</T>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-          <H size={40} heavy style={{ letterSpacing: -1 }}>{money(total)}</H><T muted font="semi">of {money(b)}</T>
+          <H size={56} style={{ letterSpacing: -1 }}>{money(total)}</H><T muted font="semi">of {money(b)}</T>
         </View>
       </View>
-      <View style={{ backgroundColor: over ? t.badSoft : t.accentSoft, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10 }}>
+      <View style={{ backgroundColor: over ? t.badSoft : t.accentSoft, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 }}>
         <T size={13} font="semi" color={over ? t.bad : t.accent}>{over ? money(total - b) + ' over budget' : money(b - total) + ' to spare'}</T>
       </View>
     </View>
@@ -90,17 +88,17 @@ function Summary({ list, settings }) {
 
 function WeekStrip({ day, setDay, plan, settings, targets }) {
   const t = useT();
-  return <View style={{ flexDirection: 'row', gap: 6, marginTop: 18, marginBottom: 14 }}>
+  return <View style={{ flexDirection: 'row', marginTop: 28, marginBottom: 14 }}>
     {DAYS.map((nm, i) => {
       const sel = i === day;
       const train = targets && settings.fitness.week[i] !== 'rest';
       const short = targets && dayNutrition(plan.days[i]).protein < targets.days[i].protein - 5;
       return <TouchableOpacity key={nm} onPress={() => setDay(i)} accessibilityRole="button" accessibilityState={{ selected: sel }}
         accessibilityLabel={`${nm} ${dayDate(i).getDate()}${train ? ', training day' : ''}`}
-        style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 14, backgroundColor: sel ? t.ink : t.surface, borderWidth: 1, borderColor: sel ? t.ink : i === todayIdx() ? t.line : 'transparent' }}>
-        <T size={12} font="semi" color={sel ? t.bg : t.muted} style={sel && { opacity: 0.75 }}>{nm}</T>
-        <H size={19} style={{ color: sel ? t.bg : t.ink }}>{dayDate(i).getDate()}</H>
-        <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 3, backgroundColor: short ? t.bad : train ? t.train : 'transparent' }} />
+        style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 0, backgroundColor: sel ? t.accentSoft : 'transparent', borderLeftWidth: i ? 1 : 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.line }}>
+        <T size={11} color={sel ? t.ink : t.muted} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{nm}</T>
+        <H size={20}>{dayDate(i).getDate()}</H>
+        <View style={{ width: 6, height: 6, borderRadius: 0, marginTop: 3, backgroundColor: short ? t.bad : train ? t.train : 'transparent' }} />
       </TouchableOpacity>;
     })}
   </View>;
@@ -119,20 +117,20 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
     <WeekStrip day={day} setDay={setDay} plan={data.plan} settings={s} targets={tg} />
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
       <H size={24}>{date.toLocaleDateString('en-ZA', { weekday: 'long' })} {date.getDate()} {date.toLocaleDateString('en-ZA', { month: 'long' })}</H>
-      {tg && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: act !== 'rest' ? t.trainSoft : t.sunk, borderRadius: 99, paddingVertical: 4, paddingHorizontal: 10 }}>
+      {tg && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: act !== 'rest' ? t.trainSoft : t.sunk, borderRadius: 0, paddingVertical: 4, paddingHorizontal: 10 }}>
         <Icon name="run" size={16} color={act !== 'rest' ? t.train : t.muted} /><T size={13} font="semi" color={act !== 'rest' ? t.train : t.muted}>{ACTIVITIES[act].label}</T></View>}
     </View>
     {tg && <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
       {[['Protein', n.protein, tg.days[day].protein, 'g', 95], ['Energy', n.kcal, tg.days[day].kcal, 'kcal', 90]].map(([label, v, target, unit, okPct]) => {
         const pct = Math.min(100, (v / target) * 100);
-        return <View key={label} style={{ flex: 1, backgroundColor: t.surface, borderRadius: 14, padding: 12, gap: 6 }}>
+        return <View key={label} style={{ flex: 1, backgroundColor: t.surface, borderRadius: 0, padding: 12, gap: 6 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><T muted size={13}>{label}</T><T muted size={13}>{Math.round(pct)}%</T></View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}><H size={20}>{v.toLocaleString('en-ZA')}{unit === 'g' ? ' g' : ''}</H><T muted size={13}>of {target.toLocaleString('en-ZA')} {unit}</T></View>
           <Meter value={v} max={target} height={6} color={pct < okPct ? t.train : t.accent} />
         </View>;
       })}
     </View>}
-    <View style={[{ backgroundColor: t.surface, borderRadius: 20, overflow: 'hidden' }, shadow]}>
+    <View style={[{ backgroundColor: t.surface, borderRadius: 0, overflow: 'hidden' }, shadow]}>
       {slots.map((m, idx) => {
         const r = d[m] && recipeById(d[m]); const key = day + ':' + m; const lk = !!data.locked[key];
         const rn = r && recipeNutrition(r), p = d.portion || 1;
@@ -150,7 +148,7 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
               </View>}
             </TouchableOpacity>
             {r && <TouchableOpacity accessibilityLabel={lk ? `Unlock ${r.name}` : `Keep ${r.name} when re-planning`} onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })}
-              style={{ width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: lk ? t.accentSoft : 'transparent' }}>
+              style={{ width: 38, height: 38, borderRadius: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: lk ? t.accentSoft : 'transparent' }}>
               <Icon name={lk ? 'lock' : 'unlock'} color={lk ? t.accent : t.muted} /></TouchableOpacity>}
             {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} onPress={() => openSheet({ type: 'swap', key })} style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}><Icon name="swap" /></TouchableOpacity>}
           </View>
@@ -158,7 +156,7 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
       })}
       {d.snacks?.length > 0 && <View style={{ padding: 14, paddingLeft: 16, borderTopWidth: 1, borderStyle: 'dashed', borderColor: t.line, backgroundColor: t.trainSoft, gap: 8 }}>
         <T size={13} font="semi" color={t.train}>Snacks</T>
-        <Chips>{d.snacks.map((x, i) => <View key={i} style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, borderRadius: 99, paddingVertical: 3, paddingHorizontal: 9 }}><T size={13}>{recipeById(x).name}</T></View>)}</Chips>
+        <Chips>{d.snacks.map((x, i) => <View key={i} style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, borderRadius: 0, paddingVertical: 3, paddingHorizontal: 9 }}><T size={13}>{recipeById(x).name}</T></View>)}</Chips>
       </View>}
     </View>
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
@@ -185,8 +183,8 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
       {Object.keys(STORES).map(k => {
         const on = s.store === k;
         return <TouchableOpacity key={k} onPress={() => update(d => { d.settings.store = k; })} accessibilityState={{ selected: on }}
-          style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: 1, borderColor: on ? t.ink : t.line, backgroundColor: on ? t.ink : t.surface, borderRadius: 99, paddingVertical: 7, paddingHorizontal: 12 }}>
-          <T size={13.5} font="semi" color={on ? t.bg : t.ink}>{shortStore(k)}</T><T size={12.5} color={on ? t.bg : t.muted} style={on && { opacity: 0.7 }}>{money(list.byStore[k])}</T>
+          style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: 1, borderColor: t.line, backgroundColor: on ? t.accentSoft : 'transparent', borderRadius: 0, paddingVertical: 10, paddingHorizontal: 14, marginRight: -7 }}>
+          <T size={13.5}>{shortStore(k)}</T><T size={13.5} color={t.muted}>{money(list.byStore[k])}</T>
         </TouchableOpacity>;
       })}
     </ScrollView>
@@ -199,7 +197,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
     <View style={[{ marginTop: 16 }, shadow]}>
       <View style={{ backgroundColor: t.paper, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 14 }}>
         <View style={{ alignItems: 'center', gap: 2, paddingBottom: 10 }}>
-          <T font="slipSemi" size={16} style={[P, { letterSpacing: 1 }]}>{STORES[s.store].name.toUpperCase()}</T>
+          <T font="slipSemi" size={14} style={[P, { letterSpacing: 5 }]}>TAFEL</T><T font="slip" size={11} color={t.paperMuted} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>Shopping list, {shortStore(s.store)}</T>
           <T font="slip" size={12} color={t.paperMuted}>Week of {weekStart().toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}, {plural(s.householdSize, 'person')}</T>
           <T font="slip" size={12} color={t.paperMuted}>{left} of {plural(main.length, 'item')} still to get</T>
         </View>
@@ -211,7 +209,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
             {head && <T font="slipSemi" size={12.5} color={t.paperMuted} style={{ marginTop: 14, marginBottom: 2 }}>{head}</T>}
             <TouchableOpacity onPress={() => update(d => { if (done) delete d.checked[i.id]; else d.checked[i.id] = true; })} accessibilityRole="checkbox" accessibilityState={{ checked: done }}
               style={{ flexDirection: 'row', gap: 8, paddingVertical: 5, alignItems: 'flex-start' }}>
-              <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: done ? t.paperInk : '#8b8e8f', backgroundColor: done ? t.paperInk : 'transparent', marginTop: 2, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 16, height: 16, borderRadius: 0, borderWidth: 1.5, borderColor: done ? t.paperInk : '#8b8e8f', backgroundColor: done ? t.paperInk : 'transparent', marginTop: 2, alignItems: 'center', justifyContent: 'center' }}>
                 {done && <Icon name="check" size={12} color={t.paper} />}</View>
               <View style={{ flex: 1 }}>
                 <T font="slip" size={13.5} style={[P, done && { textDecorationLine: 'line-through', color: '#8b8e8f' }]}>{i.packs > 1 ? i.packs + ' × ' : ''}{i.name}</T>
@@ -227,7 +225,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
         })}
         <View style={{ marginTop: 12 }}><Dashed color={t.paperLine} /></View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 }}>
-          <T font="slipSemi" size={16} style={P}>ESTIMATED TOTAL</T><T font="slipSemi" size={16} style={P}>{money2(list.total)}</T></View>
+          <T font="slipSemi" size={16} style={P}>Estimated total</T><T font="slipSemi" size={16} style={P}>{money2(list.total)}</T></View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <T font="slip" size={12} color={t.paperMuted}>Budget {money(s.weeklyBudget)}</T>
           <T font="slip" size={12} color={t.paperMuted}>{list.total > s.weeklyBudget ? money(list.total - s.weeklyBudget) + ' over' : money(s.weeklyBudget - list.total) + ' under'}</T></View>
@@ -237,7 +235,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
       <ZigZag color={t.paper} />
     </View>
 
-    <View style={{ backgroundColor: t.surface, borderRadius: 20, padding: 18, marginTop: 16, gap: 10 }}>
+    <View style={{ backgroundColor: t.surface, borderRadius: 0, padding: 18, marginTop: 16, gap: 10 }}>
       <H size={16}>Same list at other stores</H>
       {Object.entries(list.byStore).sort((a, c) => a[1] - c[1]).map(([k, v]) => {
         const cur = k === s.store;
@@ -274,7 +272,7 @@ function FitnessScreen({ data, update, regenerate }) {
       <Section title="Daily targets">
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {[[`${tg.protein} g`, `protein a day (${tg.perKg} g per kg)`], [tg.restKcal.toLocaleString('en-ZA'), 'kcal on a rest day']].map(([v, l]) =>
-            <View key={l} style={{ flex: 1, backgroundColor: t.sunk, borderRadius: 14, padding: 14 }}><H size={30} heavy>{v}</H><T muted size={13}>{l}</T></View>)}
+            <View key={l} style={{ flex: 1, backgroundColor: t.sunk, borderRadius: 0, padding: 14 }}><H size={30} heavy>{v}</H><T muted size={13}>{l}</T></View>)}
         </View>
       </Section>
       <Section title="Your week of training" lead="Training days get more food, sized to the session.">
@@ -316,7 +314,7 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut }) {
     <Section title="Household and budget">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <Field label="People eating">
-          <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.line, borderRadius: 12, backgroundColor: t.bg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.line, borderRadius: 0, backgroundColor: t.bg }}>
             <TouchableOpacity accessibilityLabel="Fewer people" onPress={() => step(-1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>−</T></TouchableOpacity>
             <T font="bold" size={16} style={{ flex: 1, textAlign: 'center' }}>{s.householdSize}</T>
             <TouchableOpacity accessibilityLabel="More people" onPress={() => step(1)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><T muted size={20}>+</T></TouchableOpacity>
@@ -334,7 +332,7 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut }) {
       <T muted size={13}>For halal, buy halal-certified meat. Boerewors counts as containing pork; stock cubes, oats and soy sauce count as containing gluten.</T>
     </Section>
     <Section title="Your prices" lead="Base prices are Checkers. Type what you actually pay and the plan will use it.">
-      <View style={{ borderWidth: 1, borderColor: t.line, borderRadius: 14, overflow: 'hidden' }}>
+      <View style={{ borderWidth: 1, borderColor: t.line, borderRadius: 0, overflow: 'hidden' }}>
         {Object.entries(INGREDIENTS).sort((a, c) => a[1].aisle.localeCompare(c[1].aisle)).map(([id, ing]) => {
           const head = ing.aisle !== aisle ? (aisle = ing.aisle) : null;
           return <View key={id}>
@@ -382,18 +380,18 @@ function Sheet({ sheet, data, update, priceFeed, close, toast }) {
         <T>{INGREDIENTS[id].name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: INGREDIENTS[id].unit })}</T></View>)}
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Method</H>
       {r.steps.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
-        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}><T size={13} font="bold" color={t.accent}>{i + 1}</T></View>
+        <View style={{ width: 24, height: 24, borderRadius: 0, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}><T size={13} font="bold" color={t.accent}>{i + 1}</T></View>
         <T style={{ flex: 1 }}>{x}</T></View>)}</>;
   } else if (sheet.type === 'text') {
     body = <><H size={22}>Grocery list</H><T muted size={14} style={{ marginBottom: 10 }}>Select all and paste into WhatsApp or Notes.</T>
       <TextInput multiline editable={false} value={listAsText(buildList(data.plan, s, priceFeed, data.overrides), s)}
-        style={{ color: t.ink, fontFamily: FONTS.slip, fontSize: 12.5, minHeight: 260, backgroundColor: t.bg, borderRadius: 12, padding: 12 }} /></>;
+        style={{ color: t.ink, fontFamily: FONTS.slip, fontSize: 12.5, minHeight: 260, backgroundColor: t.bg, borderRadius: 0, padding: 12 }} /></>;
   }
   const wide = width >= 820;
   return <Modal transparent animationType={wide ? 'fade' : 'slide'} visible onRequestClose={close}>
     <TouchableOpacity activeOpacity={1} onPress={close} style={{ flex: 1, backgroundColor: 'rgba(10,18,14,0.45)', justifyContent: wide ? 'center' : 'flex-end', alignItems: 'center' }}>
-      <TouchableOpacity activeOpacity={1} style={{ backgroundColor: t.surface, width: '100%', maxWidth: 560, maxHeight: wide ? '80%' : '86%', borderRadius: 24, borderBottomLeftRadius: wide ? 24 : 0, borderBottomRightRadius: wide ? 24 : 0, padding: 20, paddingTop: wide ? 22 : 10 }}>
-        {!wide && <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: t.line, alignSelf: 'center', marginBottom: 14 }} />}
+      <TouchableOpacity activeOpacity={1} style={{ backgroundColor: t.surface, width: '100%', maxWidth: 560, maxHeight: wide ? '80%' : '86%', borderRadius: 0, borderBottomLeftRadius: wide ? 24 : 0, borderBottomRightRadius: wide ? 24 : 0, padding: 20, paddingTop: wide ? 22 : 10 }}>
+        {!wide && <View style={{ width: 40, height: 4, borderRadius: 0, backgroundColor: t.line, alignSelf: 'center', marginBottom: 14 }} />}
         <ScrollView>{body}</ScrollView>
         <Btn title="Close" onPress={close} style={{ marginTop: 14, alignSelf: 'flex-start' }} />
       </TouchableOpacity>
@@ -402,18 +400,18 @@ function Sheet({ sheet, data, update, priceFeed, close, toast }) {
 }
 
 // ---------- root ----------
-const TABS = [['plan', 'Plan'], ['list', 'Groceries'], ['fitness', 'Fitness'], ['settings', 'Settings']];
+const TABS = [['plan', 'The week'], ['list', 'Groceries'], ['fitness', 'Training'], ['settings', 'Settings']];
 
 function TabBar({ tab, setTab, wide }) {
   const t = useT();
-  if (wide) return <View style={{ flexDirection: 'row', backgroundColor: t.sunk, borderRadius: 99, padding: 4 }}>
+  if (wide) return <View style={{ flexDirection: 'row', backgroundColor: t.sunk, borderRadius: 0, padding: 4 }}>
     {TABS.map(([id, l]) => { const on = tab === id; return <TouchableOpacity key={id} onPress={() => setTab(id)} accessibilityRole="tab" accessibilityState={{ selected: on }}
-      style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 99, backgroundColor: on ? t.surface : 'transparent' }, on && shadow]}>
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 0, backgroundColor: on ? t.surface : 'transparent' }, on && shadow]}>
       <Icon name={id} size={18} color={on ? t.accent : t.muted} /><T size={13.5} font="semi" color={on ? t.accent : t.muted}>{l}</T></TouchableOpacity>; })}
   </View>;
   return <SafeAreaView edges={['bottom']} style={{ flexDirection: 'row', backgroundColor: t.surface, borderTopWidth: 1, borderColor: t.line, paddingHorizontal: 8, paddingTop: 6 }}>
     {TABS.map(([id, l]) => { const on = tab === id; return <TouchableOpacity key={id} onPress={() => setTab(id)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', gap: 2, paddingBottom: 6 }}>
-      <View style={{ width: 52, height: 30, borderRadius: 99, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.accentSoft : 'transparent' }}><Icon name={id} color={on ? t.accent : t.muted} /></View>
+      <View style={{ width: 52, height: 30, borderRadius: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.accentSoft : 'transparent' }}><Icon name={id} color={on ? t.accent : t.muted} /></View>
       <T size={12} font="semi" color={on ? t.accent : t.muted}>{l}</T></TouchableOpacity>; })}
   </SafeAreaView>;
 }
@@ -472,8 +470,7 @@ function Main() {
         <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, maxWidth: 760, width: '100%', alignSelf: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: wide ? 22 : 12, paddingBottom: wide ? 18 : 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
-              <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' }}><Icon name="list" color={theme.accentInk} /></View>
-              <View style={{ flexShrink: 1 }}><H size={17}>Weekly Meal Planner</H>
+              <View style={{ flexShrink: 1 }}><T font="semi" size={15} style={{ letterSpacing: 6 }}>TAFEL</T>
                 <T muted size={12.5} numberOfLines={1}>{plural(s.householdSize, 'person')}, {money(s.weeklyBudget)} a week{s.diets.length ? ', ' + s.diets.map(d => DIETS[d].label.toLowerCase()).join(', ') : ''}</T></View>
             </View>
             {wide && <TabBar tab={tab} setTab={setTab} wide />}
@@ -485,7 +482,7 @@ function Main() {
         </ScrollView>
         {!wide && <TabBar tab={tab} setTab={setTab} />}
         <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} />
-        {msg && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[{ position: 'absolute', bottom: wide ? 32 : 96, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }, shadow]}>
+        {msg && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[{ position: 'absolute', bottom: wide ? 32 : 96, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 0 }, shadow]}>
           <T font="semi" size={14} color={theme.bg}>{msg}</T></View>}
       </>}
     </SafeAreaView>
@@ -494,9 +491,7 @@ function Main() {
 
 export default function App() {
   const [loaded, fontError] = useFonts({
-    BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold,
-    Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold,
-    IBMPlexMono_400Regular, IBMPlexMono_600SemiBold,
+    HankenGrotesk_400Regular, HankenGrotesk_500Medium,
   });
   const [waited, setWaited] = useState(false);
   useEffect(() => { const id = setTimeout(() => setWaited(true), 3000); return () => clearTimeout(id); }, []);

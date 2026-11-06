@@ -3,35 +3,30 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Platform } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
+// Tafel palette: paper ground, olive ink, sage label colour, amber for training, brick for over budget.
 export const LIGHT = {
-  bg: '#eef2ef', surface: '#ffffff', sunk: '#e4eae6', ink: '#13201a', muted: '#5b6a62', line: '#d6ded9',
-  accent: '#1e6b4a', accentInk: '#ffffff', accentSoft: '#dbeee4',
-  train: '#c9821f', trainSoft: '#f8ead3', bad: '#c0392b', badSoft: '#f9e1de',
-  paper: '#fffdf8', paperInk: '#24282a', paperLine: '#cfcac0', paperMuted: '#6b6f70',
+  bg: '#fbf9f3', surface: '#fbf9f3', sunk: '#f2efe6', ink: '#454b39', muted: '#7d8172', line: '#dedbd0', rule: '#454b39',
+  accent: '#454b39', accentInk: '#fbf9f3', accentSoft: '#dfe7d2',
+  train: '#a87b2c', trainSoft: '#f3ead8', bad: '#9a4a35', badSoft: '#f3e2dc',
+  paper: '#dfe7d2', paperInk: '#3d4433', paperLine: '#a9b39a', paperMuted: '#5d6651',
 };
 export const DARK = {
-  bg: '#0e1512', surface: '#16201b', sunk: '#1c2822', ink: '#e8efeb', muted: '#94a39b', line: '#26332c',
-  accent: '#4fbf88', accentInk: '#06231a', accentSoft: '#1a3529',
-  train: '#efb35a', trainSoft: '#3a2c17', bad: '#f0806f', badSoft: '#3d1f1b',
-  paper: '#f4f0e6', paperInk: '#24282a', paperLine: '#c9c3b6', paperMuted: '#6b6f70',
+  bg: '#1d201a', surface: '#1d201a', sunk: '#252920', ink: '#e9e6db', muted: '#a3a596', line: '#353a2f', rule: '#e9e6db',
+  accent: '#e9e6db', accentInk: '#1d201a', accentSoft: '#323a2b',
+  train: '#d6a956', trainSoft: '#2f2a1e', bad: '#e08a73', badSoft: '#3a231d',
+  paper: '#323a2b', paperInk: '#e4ead9', paperLine: '#56604a', paperMuted: '#b7bfa9',
 };
-const SANS = ', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-const MONO = ', ui-monospace, Menlo, Consolas, monospace';
-// On the web, add fallback stacks so text stays sans-serif if a font file is slow or missing.
-const f = (name, stack) => (Platform.OS === 'web' ? name + stack : name);
+const SANS = ', "Helvetica Neue", Helvetica, Arial, sans-serif';
+const f = (name) => (Platform.OS === 'web' ? name + SANS : name);
 export const FONTS = {
-  display: f('BricolageGrotesque_700Bold', SANS), displayHeavy: f('BricolageGrotesque_800ExtraBold', SANS),
-  body: f('Figtree_400Regular', SANS), medium: f('Figtree_500Medium', SANS), semi: f('Figtree_600SemiBold', SANS), bold: f('Figtree_700Bold', SANS),
-  slip: f('IBMPlexMono_400Regular', MONO), slipSemi: f('IBMPlexMono_600SemiBold', MONO),
+  display: f('HankenGrotesk_400Regular'), displayHeavy: f('HankenGrotesk_400Regular'),
+  body: f('HankenGrotesk_400Regular'), medium: f('HankenGrotesk_400Regular'), semi: f('HankenGrotesk_500Medium'), bold: f('HankenGrotesk_500Medium'),
+  slip: f('HankenGrotesk_400Regular'), slipSemi: f('HankenGrotesk_500Medium'),
 };
 export const ThemeCtx = React.createContext(LIGHT);
 export const useT = () => React.useContext(ThemeCtx);
 
-export const shadow = Platform.select({
-  ios: { shadowColor: '#13201a', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-  android: { elevation: 3 },
-  default: { boxShadow: '0 1px 2px rgba(19,32,26,.06), 0 8px 24px -12px rgba(19,32,26,.18)' },
-});
+export const shadow = {}; // Tafel uses hairlines, not shadows
 
 const PATHS = {
   plan: [['rect', { x: 3.5, y: 5, width: 17, height: 15, rx: 2.5 }], ['path', 'M3.5 10h17M8 3v4M16 3v4']],
@@ -71,36 +66,37 @@ export function Btn({ title, icon, onPress, kind = 'default', style }) {
   const t = useT();
   const primary = kind === 'primary', ghost = kind === 'ghost';
   const fg = primary ? t.accentInk : ghost ? t.muted : t.ink;
+  if (!primary) return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[{ paddingVertical: 12 }, style]}>
+    <T color={fg} style={{ textDecorationLine: 'underline' }}>{title}</T></TouchableOpacity>;
   return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[{
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 16,
-    borderWidth: 1, borderColor: primary ? t.accent : ghost ? 'transparent' : t.line, backgroundColor: primary ? t.accent : ghost ? 'transparent' : t.surface,
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 22, backgroundColor: t.ink,
   }, style]}>
-    {icon && <Icon name={icon} size={18} color={fg} />}
-    <T font="semi" color={fg}>{title}</T>
+    <T font="semi" size={11.5} color={t.bg} style={{ letterSpacing: 1.8, textTransform: 'uppercase' }}>{title}</T>
   </TouchableOpacity>;
 }
 
 export function Chip({ label, on, onPress }) {
   const t = useT();
   return <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={{
-    flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: on ? t.accent : t.line,
-    backgroundColor: on ? t.accentSoft : t.surface, borderRadius: 99, paddingVertical: 8, paddingHorizontal: 13,
+    borderWidth: 1, borderColor: t.line, backgroundColor: on ? t.accentSoft : 'transparent', paddingVertical: 10, paddingHorizontal: 14, marginRight: -1, marginBottom: -1,
   }}>
-    {on && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: t.accent }} />}
-    <T size={14} font={on ? 'semi' : 'medium'} color={on ? t.accent : t.ink}>{label}</T>
+    <T size={14}>{label}</T>
   </TouchableOpacity>;
 }
-export function Chips({ children }) { return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{children}</View>; }
+export function Chips({ children }) { return <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{children}</View>; }
 
 export function Section({ title, lead, children, style }) {
   const t = useT();
-  return <View style={[{ backgroundColor: t.surface, borderRadius: 20, padding: 18, marginBottom: 14, gap: 14 }, style]}>
-    {title && <View style={{ gap: 4 }}><H>{title}</H>{lead && <T muted size={13.5}>{lead}</T>}</View>}
+  return <View style={[{ borderTopWidth: 1, borderColor: t.rule, paddingTop: 16, marginTop: 28, gap: 16 }, style]}>
+    {title && <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><View style={{ width: 6, height: 6, backgroundColor: t.ink }} />
+        <T size={17} style={{ letterSpacing: 1, textTransform: 'uppercase' }}>{title}</T></View>
+      {lead && <T muted size={13.5}>{lead}</T>}</View>}
     {children}
   </View>;
 }
 export function Field({ label, children, style }) {
-  return <View style={[{ gap: 6, flex: 1, minWidth: 130 }, style]}><T muted size={13} font="semi">{label}</T>{children}</View>;
+  return <View style={[{ gap: 8, flex: 1, minWidth: 140 }, style]}><T muted size={11} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{label}</T>{children}</View>;
 }
 
 export function NumInput({ value, onChange, placeholder, prefix, align }) {
@@ -108,29 +104,25 @@ export function NumInput({ value, onChange, placeholder, prefix, align }) {
   const [v, setV] = useState(value == null ? '' : String(value));
   useEffect(() => { setV(value == null ? '' : String(value)); }, [value]);
   const commit = () => onChange(v.trim());
-  return <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.line, borderRadius: 12, backgroundColor: t.bg, paddingHorizontal: 12 }}>
+  return <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: t.ink }}>
     {prefix && <T muted font="semi" style={{ marginRight: 4 }}>{prefix}</T>}
     <TextInput keyboardType="decimal-pad" value={v} placeholder={placeholder} placeholderTextColor={t.muted}
       onChangeText={setV} onEndEditing={commit} onBlur={commit} returnKeyType="done"
-      style={{ flex: 1, paddingVertical: 10, color: t.ink, fontFamily: FONTS.body, fontSize: 15, textAlign: align || 'left' }} />
+      style={{ flex: 1, paddingVertical: 8, color: t.ink, fontFamily: FONTS.body, fontSize: 17, textAlign: align || 'left' }} />
   </View>;
 }
 
 export function Meter({ value, max, over, height = 10, color }) {
   const t = useT();
-  return <View style={{ height, borderRadius: 99, backgroundColor: t.sunk, overflow: 'hidden' }}>
-    <View style={{ width: Math.min(100, (value / max) * 100) + '%', height, borderRadius: 99, backgroundColor: color || (over ? t.bad : t.accent) }} />
+  return <View style={{ height: 3, justifyContent: 'center' }}>
+    <View style={{ position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: t.line }} />
+    <View style={{ width: Math.min(100, (value / max) * 100) + '%', height: 3, backgroundColor: color || (over ? t.bad : t.ink) }} />
   </View>;
 }
 
 export function Dashed({ color }) {
-  return <View style={{ height: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: color, marginVertical: 2 }} />;
+  return <View style={{ height: 1, backgroundColor: color, marginVertical: 2 }} />;
 }
 
 // Torn-receipt bottom edge.
-export function ZigZag({ color }) {
-  const teeth = Array.from({ length: 60 });
-  return <View style={{ height: 8, overflow: 'hidden', flexDirection: 'row' }}>
-    {teeth.map((_, i) => <View key={i} style={{ width: 14, height: 14, backgroundColor: color, transform: [{ translateY: -7 }, { rotate: '45deg' }], marginRight: -0.0 }} />)}
-  </View>;
-}
+export function ZigZag() { return null; }
