@@ -65,24 +65,21 @@ function Summary({ list, settings }) {
   const b = settings.weeklyBudget, total = list.total, over = total > b;
   const cheapest = Object.entries(list.byStore).sort((a, c) => a[1] - c[1])[0];
   const saving = list.byStore[settings.store] - cheapest[1];
-  return <View style={[{ backgroundColor: t.surface, borderRadius: 0, padding: 18, gap: 14 }, shadow]}>
+  return <View style={{ paddingTop: 24, gap: 12 }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
       <View>
-        <T muted size={13}>Groceries this week at {shortStore(settings.store)}</T>
+        <T muted size={11} style={{ letterSpacing: 1.6, textTransform: 'uppercase' }}>Groceries this week at {shortStore(settings.store)}</T>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
           <H size={56} style={{ letterSpacing: -1 }}>{money(total)}</H><T muted font="semi">of {money(b)}</T>
         </View>
       </View>
-      <View style={{ backgroundColor: over ? t.badSoft : t.accentSoft, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 }}>
-        <T size={13} font="semi" color={over ? t.bad : t.accent}>{over ? money(total - b) + ' over budget' : money(b - total) + ' to spare'}</T>
-      </View>
+      <T color={over ? t.bad : t.ink}>{over ? money(total - b) + ' over budget' : money(b - total) + ' to spare'}</T>
     </View>
     <Meter value={total} max={b} over={over} />
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-      <Icon name={saving > 5 ? 'list' : 'check'} size={18} />
-      <T muted size={13.5} style={{ flex: 1 }}>{saving > 5
-        ? <><T size={13.5} font="semi">{shortStore(cheapest[0])}</T> would be about {money(saving)} cheaper for this list.</>
-        : `${shortStore(settings.store)} is the cheapest option for this list.`}</T>
+      <T muted size={14} style={{ flex: 1 }}>{saving > 5
+        ? `The same list costs about ${money(saving)} less at ${shortStore(cheapest[0])}.`
+        : `${shortStore(settings.store)} is the most affordable store for this list.`}</T>
     </View>
   </View>;
 }
@@ -131,33 +128,29 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
         </View>;
       })}
     </View>}
-    <View style={[{ backgroundColor: t.surface, borderRadius: 0, overflow: 'hidden' }, shadow]}>
+    <View style={{ borderTopWidth: 1, borderColor: t.rule }}>
       {slots.map((m, idx) => {
         const r = d[m] && recipeById(d[m]); const key = day + ':' + m; const lk = !!data.locked[key];
         const rn = r && recipeNutrition(r), p = d.portion || 1;
-        const when = <T muted size={narrow ? 12.5 : 13} font="semi" style={!narrow && { width: 76 }}>{cap(m)}</T>;
-        return <View key={m} style={{ paddingVertical: 14, paddingLeft: 16, paddingRight: 10, borderTopWidth: idx ? 1 : 0, borderColor: t.line, gap: 4 }}>
+        const when = <T muted size={11} style={[{ letterSpacing: 1.6, textTransform: 'uppercase' }, !narrow && { width: 96 }]}>{m}</T>;
+        return <View key={m} style={{ paddingVertical: 18, borderBottomWidth: 1, borderColor: t.line, gap: 6 }}>
           {narrow && when}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {!narrow && when}
             <TouchableOpacity style={{ flex: 1, gap: 3 }} disabled={!r} onPress={() => openSheet({ type: 'recipe', id: r.id })}>
-              <T size={16} font="semi">{r ? r.name : 'No recipe fits your filters'}</T>
-              {r && <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="clock" size={14} /><T muted size={13}>{r.mins} min</T></View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="protein" size={14} /><T muted size={13}>{Math.round(rn.protein * p)} g protein</T></View>
-                {p !== 1 && <T size={13} font="semi" color={t.train}>Your portion ×{p}</T>}
-              </View>}
+              {r ? <H size={19}>{r.name}</H> : <T muted>No recipe fits your requirements</T>}
+              {r && <T muted size={13.5}>{r.mins} min  •  {Math.round(rn.protein * p)} g protein{p !== 1 ? <T size={13.5} color={t.train}>  •  Your portion ×{p}</T> : null}</T>}
             </TouchableOpacity>
             {r && <TouchableOpacity accessibilityLabel={lk ? `Unlock ${r.name}` : `Keep ${r.name} when re-planning`} onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })}
-              style={{ width: 38, height: 38, borderRadius: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: lk ? t.accentSoft : 'transparent' }}>
-              <Icon name={lk ? 'lock' : 'unlock'} color={lk ? t.accent : t.muted} /></TouchableOpacity>}
-            {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} onPress={() => openSheet({ type: 'swap', key })} style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}><Icon name="swap" /></TouchableOpacity>}
+              style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
+              <T size={13.5} color={lk ? t.train : t.ink} style={{ textDecorationLine: 'underline' }}>{lk ? 'Kept' : 'Keep'}</T></TouchableOpacity>}
+            {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} onPress={() => openSheet({ type: 'swap', key })} style={{ paddingVertical: 6, paddingHorizontal: 4, marginLeft: 8 }}><T size={13.5} style={{ textDecorationLine: 'underline' }}>Swap</T></TouchableOpacity>}
           </View>
         </View>;
       })}
-      {d.snacks?.length > 0 && <View style={{ padding: 14, paddingLeft: 16, borderTopWidth: 1, borderStyle: 'dashed', borderColor: t.line, backgroundColor: t.trainSoft, gap: 8 }}>
-        <T size={13} font="semi" color={t.train}>Snacks</T>
-        <Chips>{d.snacks.map((x, i) => <View key={i} style={{ backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, borderRadius: 0, paddingVertical: 3, paddingHorizontal: 9 }}><T size={13}>{recipeById(x).name}</T></View>)}</Chips>
+      {d.snacks?.length > 0 && <View style={{ paddingVertical: 16, borderBottomWidth: 1, borderColor: t.line, gap: 6 }}>
+        <T size={11} color={t.train} style={{ letterSpacing: 1.6, textTransform: 'uppercase' }}>Snacks</T>
+        <T>{d.snacks.map(x => recipeById(x).name).join('  •  ')}</T>
       </View>}
     </View>
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
