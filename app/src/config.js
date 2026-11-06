@@ -17,4 +17,4 @@ export const GOOGLE_CLIENT_IDS = {
 
 // Optional public JSON price feed, refreshed monthly (same shape as prices.example.json).
 // Leave empty to use the built-in estimates.
-export const PRICE_FEED_URL = '';
+export const PRICE_FEED_URL = 'https://cdn.jsdelivr.net/gh/MattRoss89/meal-planner-sa@main/prices.json';
