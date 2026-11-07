@@ -297,7 +297,7 @@ const shortStore=k=>({shoprite:'Shoprite',checkers:'Checkers',pnp:'Pick n Pay',s
 const demo={budget:1200,people:2,train:false};
 
 // Facts and ticker from the real recipe library.
-document.getElementById('f-recipes').textContent=RECIPES.length;
+document.getElementById('f-recipes').textContent=RECIPES.filter(r=>!r.rescue).length;
 const dishes=RECIPES.filter(r=>r.meal==='dinner').map(r=>`<span>${esc(r.name)}</span>`).join('');
 document.getElementById('ticker').innerHTML=dishes+dishes;
 

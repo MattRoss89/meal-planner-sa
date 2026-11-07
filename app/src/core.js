@@ -63,6 +63,7 @@ export const INGREDIENTS = {
   chakalaka:    I('Chakalaka (410 g)', 1, 'ea', 19.99, 'Tins & jars', '', 6, 200, 'chakalaka'),
   chickpeas:    I('Chickpeas (400 g)', 1, 'ea', 19.99, 'Tins & jars', '', 17, 330, 'chickpeas tin'),
   tomato_can:   I('Chopped tomatoes (410 g)', 1, 'ea', 14.99, 'Tins & jars', '', 4, 80, 'chopped tomatoes tin'),
+  passata:      I('Tomato passata (500 g)', 500, 'g', 27.99, 'Tins & jars', '', 1.3, 30, 'tomato passata'),
   coconut_milk: I('Coconut milk (400 ml)', 1, 'ea', 24.99, 'Tins & jars', '', 8, 700, 'coconut milk'),
   peanut_butter:I('Peanut butter', 400, 'g', 39.99, 'Pantry', 'n', 25, 590, 'peanut butter 400g'),
   frozen_veg:   I('Frozen mixed veg', 1000, 'g', 39.99, 'Frozen', '', 3, 60, 'frozen mixed vegetables'),
@@ -84,13 +85,15 @@ export const INGREDIENTS = {
 // Iron in mg per 100 g/ml (or per item for 'ea'), and ingredients that supply vitamin C,
 // which helps the body absorb iron from plant foods. Approximate values; SA maize meal and
 // bread flour are iron-fortified.
-const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0, "chicken_livers": 9.0, "bacon": 0.6, "sweetcorn": 1.2, "gem_squash": 0.6, "lemon": 0.3};
-const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg", "lemon", "gem_squash"]);
+const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0, "chicken_livers": 9.0, "bacon": 0.6, "sweetcorn": 1.2, "gem_squash": 0.6, "lemon": 0.3, "passata": 0.6};
+const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg", "lemon", "gem_squash", "passata"]);
 for (const [id, ing] of Object.entries(INGREDIENTS)) { ing.iron = IRON[id] || 0; ing.vitC = VIT_C.has(id); }
 
 // ---------- Recipes ----------
 // qty is for 4 servings. lc = low-carb friendly.
 const R = (id, name, meal, mins, ing, steps, lc = false) => ({ id, name, meal, mins, ing, steps, lc });
+// Pantry rescues: meals from two or three basics. Offered in the Cook tab, never planned into a week.
+const RESCUE = (id, name, meal, mins, ing, steps) => ({ ...R(id, name, meal, mins, ing, steps), rescue: true });
 
 export const RECIPES = [
   // Breakfast
@@ -170,6 +173,11 @@ export const RECIPES = [
   R('d_chicken_rice', 'One-pot chicken & rice', 'dinner', 50, { chicken_pieces: 1000, rice: 300, onion: 150, tomato_can: 1, frozen_veg: 300, stock: 2, oil: 15 }, ['Brown chicken with onion.', 'Add rice, tomatoes, stock and 600 ml water.', 'Cover and cook 25 min; stir in veg for the last 5.']),
   R('d_lemon_hake', 'Lemon hake, potatoes & broccoli', 'dinner', 40, { hake: 600, lemon: 1, potato: 600, broccoli: 1, butter: 30 }, ['Roast potato chunks 25 min at 220°C.', 'Add hake with butter and lemon; roast 12 min.', 'Steam broccoli to serve.']),
   R('d_roast_chicken_veg', 'Roast chicken & veg', 'dinner', 55, { chicken_pieces: 1200, butternut: 1, broccoli: 1, onion: 150, oil: 30 }, ['Roast chicken with butternut and onion 45 min at 200°C.', 'Add broccoli for the last 10 min.'], true),
+  // Pantry rescues (Cook tab only)
+  RESCUE('r_tomato_egg_rice', 'Tomato & egg fried rice', 'dinner', 20, { rice: 300, eggs: 6, passata: 250, oil: 30 }, ['Cook the rice (leftover rice is even better).', 'Scramble the eggs in half the oil until just set; lift them out.', 'Fry the passata in the rest of the oil for 3 min until it darkens, then add the rice and toss.', 'Fold the eggs back in and season with salt and pepper.']),
+  RESCUE('r_egg_rice_bowl', 'Fried egg & soy rice bowl', 'lunch', 15, { rice: 300, eggs: 4, soy_sauce: 30, oil: 15 }, ['Cook the rice.', 'Fry the eggs until the edges crisp.', 'Spoon rice into bowls, top with an egg and a splash of soy sauce.']),
+  RESCUE('r_tomato_pasta', 'Quick tomato pasta', 'dinner', 20, { pasta: 500, passata: 500, garlic: 0.25, cheese: 60, oil: 15 }, ['Boil the pasta.', 'Fry the garlic in oil for a minute, add the passata and simmer 10 min.', 'Toss with the pasta; top with cheese.']),
+  RESCUE('r_tomato_rice', 'Tomato rice', 'dinner', 25, { rice: 300, passata: 250, onion: 100, stock: 1, oil: 15 }, ['Fry the onion in oil until soft.', 'Stir in the rice, passata, stock cube and 500 ml water.', 'Cover and simmer 18 min until the rice is tender.']),
 ];
 
 // ---------- Fitness snacks (protein top-ups, 1 serving for one person) ----------
@@ -441,7 +449,7 @@ export function toggleFavourite(settings, id) {
 function rng(seed) { let x = seed >>> 0 || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 function candidates(meal, settings) {
-  return RECIPES.filter(r => r.meal === meal && allowedRecipe(r, settings.diets));
+  return RECIPES.filter(r => r.meal === meal && !r.rescue && allowedRecipe(r, settings.diets));
 }
 
 function snackCandidates(settings) {
@@ -629,11 +637,44 @@ export function pantryChoices() {
 export const COOK_LIMIT = { almost: 2, close: 4 }; // most missing ingredients per group
 export const COOK_TIMES = [0, 20, 30, 45]; // "ready in" filters, minutes (0 = any)
 
-// Recipes ranked by what the household already has.
-//   ready:  nothing to buy
-//   almost: one or two things to buy, with what they'd cost at the chosen store
-//   close:  three or four to buy, but at least half the ingredients are in
-// Diet rules always apply; favourites come first within a group.
+// Cooking now, a recipe can make do. Ingredients here add flavour but can be left
+// out, unless the dish is named after them ("Spinach & cheese omelette").
+const OPTIONAL = {
+  onion: 'onion', garlic: 'garlic', green_pepper: 'pepper', spinach: 'spinach', mushrooms: 'mushroom',
+  carrot: 'carrot', frozen_peas: 'pea', frozen_veg: 'veg', sweetcorn: 'corn', lemon: 'lemon',
+  cheese: 'chees', tomato: 'tomato', banana: 'banana', apple: 'apple', avocado: 'avo', butter: 'butter',
+};
+// Ingredients that stand in for each other in a pinch, best match first.
+const SWAPS = [
+  ['tomato_can', 'passata'], // cooked tomato; fresh tomatoes are an extra that can be left out
+  ['bread', 'wraps'],
+  ['chicken_breast', 'chicken_pieces'],
+  ['frozen_peas', 'frozen_veg'],
+];
+export const MAKE_DO_SKIP_MAX = 3; // never leave out more than this
+// How much of the stand-in to use: a 410 g tin is about 410 g of passata.
+const SWAP_GRAMS = { tomato_can: 410, passata: 1 };
+export function standInQty(fromId, toId, qty) {
+  const a = SWAP_GRAMS[fromId], b = SWAP_GRAMS[toId];
+  if (a && b) return { qty: (qty * a) / b, unit: INGREDIENTS[toId].unit };
+  return { qty, unit: INGREDIENTS[fromId].unit };
+}
+
+export function canLeaveOut(recipe, id) {
+  const key = OPTIONAL[id];
+  return !!key && !recipe.name.toLowerCase().includes(key);
+}
+function standIn(id, owned) {
+  for (const g of SWAPS) if (g.includes(id)) { const w = g.find(x => x !== id && owned.has(x)); if (w) return w; }
+  return null;
+}
+
+// Recipes ranked by what the household already has, for cooking now.
+//   ready:  nothing to buy (possibly leaving out an extra or using a stand-in)
+//   almost: one or two things to buy (at least half the essentials in), priced at the chosen store
+//   close:  three or four to buy, but at least half the essentials are in
+// Each entry says what to leave out (skipped) and what stands in (swaps).
+// Diet rules always apply; favourites first, then the fewest changes, then the quickest.
 export function cookFromPantry(have, settings, priceFeed, overrides, maxMins) {
   const s = mergeSettings(settings);
   const owned = new Set(have || []);
@@ -642,26 +683,31 @@ export function cookFromPantry(have, settings, priceFeed, overrides, maxMins) {
   for (const r of RECIPES) {
     if (!allowedRecipe(r, s.diets)) continue;
     if (maxMins && r.mins > maxMins) continue;
-    const needed = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple);
-    const got = needed.filter(id => owned.has(id));
-    if (!got.length) continue;
-    const missing = needed.filter(id => !owned.has(id)).map(id => ({
-      id, name: ingredientLabel(id), cost: priceOf(id, s.store, priceFeed, overrides),
-    }));
+    const got = [], swaps = [], skipped = [], missing = [];
+    for (const id of Object.keys(r.ing)) {
+      if (INGREDIENTS[id].staple) continue;
+      if (owned.has(id)) { got.push(id); continue; }
+      const w = standIn(id, owned);
+      if (w) swaps.push({ id, name: ingredientLabel(id), with: w, withName: ingredientLabel(w) });
+      else if (canLeaveOut(r, id) && skipped.length < MAKE_DO_SKIP_MAX) skipped.push({ id, name: ingredientLabel(id) });
+      else missing.push({ id, name: ingredientLabel(id), cost: priceOf(id, s.store, priceFeed, overrides) });
+    }
+    if (!got.length && !swaps.length) continue;
+    const essentials = got.length + swaps.length + missing.length;
     const entry = {
-      recipe: r, have: got, missing,
+      recipe: r, have: got, swaps, skipped, missing,
       missingCost: Math.round(missing.reduce((t, m) => t + m.cost, 0) * 100) / 100,
-      coverage: got.length / needed.length,
+      coverage: (got.length + swaps.length) / essentials,
+      changes: swaps.length + skipped.length,
       favourite: isFavourite(s, r.id),
     };
     if (!missing.length) out.ready.push(entry);
-    else if (missing.length <= COOK_LIMIT.almost) out.almost.push(entry);
+    else if (missing.length <= COOK_LIMIT.almost && entry.coverage >= 0.5) out.almost.push(entry);
     else if (missing.length <= COOK_LIMIT.close && entry.coverage >= 0.5) out.close.push(entry);
   }
   const fav = (a, b) => (b.favourite - a.favourite);
-  // Cooking now: within each group the quickest meals lead.
-  out.ready.sort((a, b) => fav(a, b) || a.recipe.mins - b.recipe.mins || b.have.length - a.have.length);
-  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.recipe.mins - b.recipe.mins);
+  out.ready.sort((a, b) => fav(a, b) || a.changes - b.changes || a.recipe.mins - b.recipe.mins);
+  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.changes - b.changes || a.recipe.mins - b.recipe.mins);
   out.close.sort((a, b) => fav(a, b) || b.coverage - a.coverage || a.missingCost - b.missingCost);
   return out;
 }

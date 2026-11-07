@@ -24,7 +24,7 @@ const MAP = {
   butternut: ['veg', 'squash', 'cube'], cabbage: ['veg', 'cabbage', 'shred'], green_pepper: ['veg', 'pepper', 'strip'], mushrooms: ['veg', 'mushroom', 'round'],
   onion: ['veg', 'onion', 'ring'], sweet_potato: ['veg', 'sweet', 'cube'], avocado: ['veg', 'avo', 'slice'], frozen_peas: ['veg', 'pea', 'dot'],
   frozen_veg: ['veg', 'carrot', 'cube'], banana: ['veg', 'banana', 'coin'], apple: ['veg', 'apple', 'slice'], cheese: ['top', 'cheese', 'shred'],
-  chakalaka: ['sauce', 'redsauce', 'pool'], tomato_can: ['sauce', 'redsauce', 'pool'], coconut_milk: ['sauce', 'coconut', 'pool'], curry: ['sauce', 'curry', 'pool'],
+  chakalaka: ['sauce', 'redsauce', 'pool'], tomato_can: ['sauce', 'redsauce', 'pool'], passata: ['sauce', 'redsauce', 'pool'], coconut_milk: ['sauce', 'coconut', 'pool'], curry: ['sauce', 'curry', 'pool'],
   chicken_livers: ['main', 'liver', 'chunk'], bacon: ['main', 'bacon', 'slice'], sweetcorn: ['veg', 'corn', 'dot'], gem_squash: ['veg', 'gem', 'cube'], lemon: ['veg', 'lemon', 'slice'],
   bread: ['side', 'bread', 'slice'], wraps: ['side', 'wrap', 'half'], peanut_butter: ['top', 'pb', 'smear'],
 };

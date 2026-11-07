@@ -31,11 +31,11 @@ describe('cook from what you have', () => {
 
   test('one or two missing are "almost", priced at the chosen store', () => {
     const r = C.recipeById('d_shakshuka');
-    const have = nonStaple(r).filter(id => id !== 'green_pepper');
+    const have = nonStaple(r).filter(id => id !== 'eggs');
     const checkers = C.cookFromPantry(have, { store: 'checkers' }).almost.find(e => e.recipe.id === r.id);
     const woolies = C.cookFromPantry(have, { store: 'woolworths' }).almost.find(e => e.recipe.id === r.id);
-    assert.deepEqual(checkers.missing.map(m => m.id), ['green_pepper']);
-    assert.equal(checkers.missingCost, C.priceOf('green_pepper', 'checkers'));
+    assert.deepEqual(checkers.missing.map(m => m.id), ['eggs']);
+    assert.equal(checkers.missingCost, C.priceOf('eggs', 'checkers'));
     assert.ok(woolies.missingCost > checkers.missingCost, 'Woolworths costs more');
   });
 
@@ -73,7 +73,10 @@ describe('cook from what you have', () => {
 test('quickest first, and the time filter drops slower meals', () => {
   const have = ['eggs', 'onion', 'tomato', 'tomato_can', 'green_pepper', 'spinach', 'cheese', 'bread', 'milk', 'butter', 'potato', 'rice', 'mince'];
   const res = C.cookFromPantry(have, {});
-  for (let i = 1; i < res.ready.length; i++) assert.ok(res.ready[i - 1].recipe.mins <= res.ready[i].recipe.mins);
+  for (let i = 1; i < res.ready.length; i++) {
+    const a = res.ready[i - 1], b = res.ready[i];
+    assert.ok(a.changes < b.changes || (a.changes === b.changes && a.recipe.mins <= b.recipe.mins), 'fewest changes, then quickest');
+  }
   const quick = C.cookFromPantry(have, {}, null, null, 20);
   for (const e of [...quick.ready, ...quick.almost, ...quick.close]) assert.ok(e.recipe.mins <= 20, e.recipe.name);
 });
@@ -112,5 +115,52 @@ describe('use up the pantry', () => {
     assert.equal(a, b);
     const c = C.planInputsKey({ pantry: ['eggs'], useUpPantry: true }), d = C.planInputsKey({ pantry: ['eggs', 'rice'], useUpPantry: true });
     assert.notEqual(c, d);
+  });
+});
+
+describe('making do', () => {
+  test('eggs, rice and passata make a meal', () => {
+    const res = C.cookFromPantry(['eggs', 'rice', 'passata'], {});
+    const ready = ids(res.ready);
+    assert.ok(ready.includes('r_tomato_egg_rice'), 'the rescue meal');
+    const shak = res.ready.find(e => e.recipe.id === 'd_shakshuka');
+    assert.ok(shak, 'shakshuka, making do');
+    assert.deepEqual(shak.swaps.map(w => [w.id, w.with]), [['tomato_can', 'passata']]);
+    assert.deepEqual(shak.skipped.map(x => x.id).sort(), ['green_pepper', 'onion']);
+  });
+
+  test("a dish named after an ingredient can't leave it out", () => {
+    const r = C.recipeById('b_omelette'); // Spinach & cheese omelette
+    assert.equal(C.canLeaveOut(r, 'spinach'), false);
+    assert.equal(C.canLeaveOut(r, 'cheese'), false);
+    assert.equal(C.canLeaveOut(r, 'tomato'), true);
+    assert.equal(C.canLeaveOut(r, 'eggs'), false, 'eggs are never optional');
+  });
+
+  test('never more than three things left out, and an exact match beats making do', () => {
+    const res = C.cookFromPantry(['eggs', 'rice', 'passata', 'onion', 'green_pepper'], {});
+    for (const e of [...res.ready, ...res.almost, ...res.close]) assert.ok(e.skipped.length <= C.MAKE_DO_SKIP_MAX);
+    const i = res.ready.findIndex(e => e.changes === 0), j = res.ready.findIndex(e => e.changes > 0);
+    if (i >= 0 && j >= 0) assert.ok(i < j);
+  });
+
+  test('passata stands in for tinned tomatoes, not fresh ones in a salad', () => {
+    const res = C.cookFromPantry(['passata', 'chicken_breast', 'avocado', 'spinach'], {});
+    const salad = [...res.ready, ...res.almost].find(e => e.recipe.id === 'l_chicken_avo_salad');
+    assert.ok(salad);
+    assert.ok(!salad.swaps.some(w => w.id === 'tomato'), 'no passata in a salad');
+  });
+
+  test('a tin of tomatoes becomes about 410 g of passata', () => {
+    assert.deepEqual(C.standInQty('tomato_can', 'passata', 1), { qty: 410, unit: 'g' });
+    assert.deepEqual(C.standInQty('bread', 'wraps', 4), { qty: 4, unit: 'ea' });
+  });
+
+  test('rescue meals are never planned into a week', () => {
+    for (let seed = 1; seed < 6; seed++) {
+      const { plan: p } = C.generatePlan({}, null, null, { seed, iterations: 60 });
+      for (const d of p.days) for (const sl of ['breakfast', 'lunch', 'dinner']) assert.ok(!d[sl] || !C.recipeById(d[sl]).rescue);
+    }
+    assert.ok(C.RECIPES.some(r => r.rescue));
   });
 });

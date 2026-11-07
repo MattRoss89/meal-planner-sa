@@ -16,7 +16,7 @@ import {
   cycleWeek, planTargets, planInputsKey, validLocks, isFavourite, toggleFavourite, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
-  pantryChoices, cookFromPantry, placeRecipe, COOK_TIMES,
+  pantryChoices, cookFromPantry, placeRecipe, COOK_TIMES, canLeaveOut, standInQty,
 } from './src/core';
 import {
   firebaseReady, watchUser, signInWithGoogleWeb, signInWithGoogleIdToken, signOut,
@@ -416,7 +416,7 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
 
 // ---------- cook from what you have (right now) ----------
 const COOK_GROUPS = [
-  ['ready', 'Cook it now', 'Everything is in your kitchen. Quickest first.'],
+  ['ready', 'Cook it now', 'Nothing to buy. Exact matches first, then ones that make do.'],
   ['almost', 'Missing one or two things', 'Swap them for something similar, or pick them up on the way.'],
   ['close', 'Worth a quick shop', 'Most of it is in.'],
 ];
@@ -462,7 +462,9 @@ function CookScreen({ data, update, priceFeed, openSheet }) {
           <Plate recipe={e.recipe} size={52} theme={t} />
           <View style={{ flex: 1, gap: 3 }}>
             <H size={18}>{e.favourite ? '♥ ' : ''}{e.recipe.name}</H>
-            <T muted size={13}>{e.recipe.mins} min  •  {cap(e.recipe.meal)}</T>
+            <T muted size={13}>{e.recipe.mins} min  •  {e.recipe.rescue ? 'Pantry rescue' : cap(e.recipe.meal)}</T>
+            {e.swaps.length > 0 && <T muted size={13}>Use {e.swaps.map(w => `${w.withName.toLowerCase()} for ${w.name.toLowerCase()}`).join(', ')}</T>}
+            {e.skipped.length > 0 && <T muted size={13}>Leave out {e.skipped.map(x => x.name.toLowerCase()).join(', ')}</T>}
             {e.missing.length > 0 && <T size={13} color={t.train}>Need {e.missing.map(m => m.name.toLowerCase()).join(', ')}</T>}
           </View>
           <T size={13.5} style={{ textDecorationLine: 'underline' }}>Cook</T>
@@ -498,16 +500,21 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc, openSheet })
       })}</>;
   } else if (sheet.type === 'cooknow') {
     const r = recipeById(sheet.id), n = recipeNutrition(r), hh = eaters(s), have = new Set(s.pantry);
-    const need = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple && !have.has(id));
+    const e = [...Object.values(cookFromPantry(s.pantry, s, priceFeed, data.overrides))].flat().find(x => x.recipe.id === r.id);
+    const swapOf = Object.fromEntries((e?.swaps || []).map(w => [w.id, w])), skip = new Set((e?.skipped || []).map(x => x.id));
+    const need = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple && !have.has(id) && !swapOf[id] && !skip.has(id));
+    const label = id => INGREDIENTS[id].name.replace(/ \(.*\)/, '').toLowerCase();
+    const makeDo = [...Object.values(swapOf).map(w => `use ${w.withName.toLowerCase()} instead of ${w.name.toLowerCase()}`), ...(skip.size ? [`leave out the ${[...skip].map(label).join(' and ')}`] : [])];
     body = <><View style={{ backgroundColor: t.accentSoft, alignItems: 'center', paddingVertical: 22, marginHorizontal: -20, marginBottom: 18, borderBottomWidth: 1, borderColor: t.rule }}><Plate recipe={r} size={Math.min(220, width * 0.55)} theme={t} /></View>
       <H size={24}>{r.name}</H>
       <T muted size={14}>{r.mins} minutes, for {householdLabel(s)}. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
-      <T size={14} color={need.length ? t.train : t.ink} style={{ marginTop: 8 }}>{need.length ? `You need ${need.map(id => INGREDIENTS[id].name.replace(/ \(.*\)/, '').toLowerCase()).join(' and ')}.` : 'You have everything for this.'}</T>
+      <T size={14} color={need.length ? t.train : t.ink} style={{ marginTop: 8 }}>{need.length ? `You need ${need.map(label).join(' and ')}.` : makeDo.length ? 'You can make this with what you have.' : 'You have everything for this.'}</T>
+      {makeDo.length > 0 && <T size={14} style={{ marginTop: 4 }}>To make do: {makeDo.join('; ')}.</T>}
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients</H>
-      {Object.entries(r.ing).map(([id, q]) => { const ing = INGREDIENTS[id]; const st = ing.staple ? 'Cupboard' : have.has(id) ? 'Have' : 'Need';
+      {Object.entries(r.ing).map(([id, q]) => { const ing = INGREDIENTS[id]; const st = ing.staple ? 'Cupboard' : have.has(id) ? 'Have' : swapOf[id] ? `Use ${swapOf[id].withName.toLowerCase()}` : skip.has(id) ? 'Leave out' : 'Need';
         return <View key={id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderColor: t.line }}>
-          <T style={{ flex: 1 }}>{ing.name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: ing.unit })}</T>
-          <T size={12.5} font="semi" color={st === 'Need' ? t.train : t.muted} style={{ width: 66, textAlign: 'right' }}>{st === 'Have' ? '✓ Have' : st}</T></View>; })}
+          <T style={{ flex: 1 }}>{ing.name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty(swapOf[id] ? standInQty(id, swapOf[id].with, q * hh / 4) : { qty: q * hh / 4, unit: ing.unit })}</T>
+          <T size={12.5} font="semi" color={st === 'Need' ? t.train : t.muted} style={{ width: 96, textAlign: 'right' }}>{st === 'Have' ? '✓ Have' : st}</T></View>; })}
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Method</H>
       {r.steps.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
         <View style={{ width: 26, height: 26, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}><T size={13} font="bold" color={t.accent}>{i + 1}</T></View>
