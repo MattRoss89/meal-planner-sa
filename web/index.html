@@ -44,7 +44,10 @@ h1,h2,h3{font-weight:400;margin:0;text-wrap:balance}
 .wordmark{font-size:15px;letter-spacing:.42em;font-weight:500;margin-right:-.42em}
 .bar .l{justify-self:start}.bar .r{justify-self:end}
 .tabs{border-bottom:1px solid var(--hair)}
-.tabs-in{max-width:880px;margin:0 auto;display:flex;gap:28px;justify-content:center;padding:0 20px}
+.tabs-in{max-width:880px;margin:0 auto;display:flex;gap:28px;justify-content:center;padding:0 20px;overflow-x:auto;scrollbar-width:none}
+.tabs-in::-webkit-scrollbar{display:none}
+.tab{white-space:nowrap;flex:none}
+@media (max-width:420px){.tabs-in{gap:14px;justify-content:flex-start;padding:0 16px}.tab{letter-spacing:.06em}}
 .tab{min-height:44px;padding:13px 0 11px;border-bottom:1px solid transparent;margin-bottom:-1px;color:var(--soft)}
 .tab[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
 main{max-width:880px;margin:0 auto;padding:0 20px 88px}
@@ -104,6 +107,9 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .meal-name{font-size:19px;line-height:1.25}
 .meal-meta{color:var(--soft);font-size:13.5px}
 .portion{color:var(--oil)}
+.need{color:var(--oil)}
+.meal.cook{grid-template-columns:1fr auto}
+.opt[hidden],.pan-group[hidden]{display:none}
 .meal-act{display:flex;gap:4px;font-size:13.5px;align-items:center}
 .meal-act button{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 .meal-act button[aria-pressed="true"]{color:var(--oil)}
@@ -506,6 +512,8 @@ const DEFAULT_SETTINGS = {
   favourites: [], // recipe ids the household loves; suggested more often
   meals: { breakfast: true, lunch: true, dinner: true },
   includeStaples: false,
+  pantry: [],          // ingredient ids the household already has (the Cook tab)
+  useUpPantry: false,  // plan the week around what's in the pantry; owned items leave the list total
   fitness: {
     enabled: false,
     weightKg: 75, heightCm: 178, age: 30, sex: 'male',
@@ -528,6 +536,8 @@ function mergeSettings(s) {
     diets: Array.isArray(s.diets) ? s.diets : [],
     prefs: Array.isArray(s.prefs) ? s.prefs : [],
     favourites: Array.isArray(s.favourites) ? s.favourites.filter(id => RECIPES.some(r => r.id === id)) : [],
+    pantry: Array.isArray(s.pantry) ? [...new Set(s.pantry)].filter(id => INGREDIENTS[id] && !INGREDIENTS[id].staple) : [],
+    useUpPantry: !!s.useUpPantry,
   };
 }
 
@@ -601,17 +611,19 @@ function buildList(plan, settings, priceFeed, overrides) {
       if (sn) for (const [id, q] of Object.entries(sn.ing)) add(id, q);
     }
   }
+  const owned = new Set(s.useUpPantry && Array.isArray(s.pantry) ? s.pantry : []);
   const items = Object.entries(need).map(([id, qty]) => {
     const ing = INGREDIENTS[id];
     const pack = packOf(id, priceFeed);
     const packs = Math.max(1, Math.ceil(qty / pack - 1e-9));
     const unitPrice = priceOf(id, s.store, priceFeed, overrides);
     return {
-      id, name: ing.name, aisle: ing.aisle, staple: ing.staple, search: ing.search,
+      id, name: ing.name, aisle: ing.aisle, staple: ing.staple, have: owned.has(id), search: ing.search,
       qty, unit: ing.unit, packs, unitPrice, cost: Math.round(packs * unitPrice * 100) / 100,
     };
   }).sort((a, b) => a.aisle.localeCompare(b.aisle) || a.name.localeCompare(b.name));
-  const counted = items.filter(i => s.includeStaples || !i.staple);
+  // Staples are assumed in the cupboard unless counted; pantry items the household has are never bought.
+  const counted = items.filter(i => !i.have && (s.includeStaples || !i.staple));
   const total = Math.round(counted.reduce((t, i) => t + i.cost, 0) * 100) / 100;
   const byStore = {};
   for (const st of Object.keys(STORES)) {
@@ -631,12 +643,14 @@ function listAsText(list, settings) {
   const lines = [`Grocery list (${STORES[settings.store].name}) ~R${Math.round(list.total)}`];
   let aisle = '';
   for (const i of list.items) {
-    if (!settings.includeStaples && i.staple) continue;
+    if ((!settings.includeStaples && i.staple) || i.have) continue;
     if (i.aisle !== aisle) { aisle = i.aisle; lines.push('', aisle.toUpperCase()); }
     lines.push(`- ${i.name} x${i.packs}  (R${i.cost.toFixed(2)})`);
   }
   const st = list.items.filter(i => i.staple && !settings.includeStaples);
   if (st.length) lines.push('', 'CHECK PANTRY', ...st.map(i => `- ${i.name}`));
+  const hv = list.items.filter(i => i.have);
+  if (hv.length) lines.push('', 'ALREADY HAVE', ...hv.map(i => `- ${ingredientLabel(i.id)}`));
   return lines.join('\n');
 }
 
@@ -814,8 +828,9 @@ function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
 // What feeds the planner (store choice excluded: it only changes prices, not meals).
 function planInputsKey(settings, overrides) {
   // Store and favourites don't re-plan the current week; favourites shape the next plan.
-  const { store, favourites, ...rest } = mergeSettings(settings);
-  return JSON.stringify([rest, overrides || {}]);
+  const { store, favourites, pantry, ...rest } = mergeSettings(settings);
+  // The pantry only shapes the plan when the household asks Tafel to use it up.
+  return JSON.stringify([rest, rest.useUpPantry ? [...pantry].sort() : null, overrides || {}]);
 }
 
 // Kept meals that still fit the current settings.
@@ -831,6 +846,67 @@ function validLocks(locked, settings) {
 }
 
 function storeSearchUrl(store, item) { return STORES[store].search(item.search); }
+
+// ---------- Cook from what you have ----------
+// An ingredient's everyday name, without the pack size: "Eggs (18)" -> "Eggs".
+function ingredientLabel(id) {
+  return INGREDIENTS[id].name.replace(/\s*\(.*\)\s*$/, '');
+}
+
+// Ingredients a household can tick off, by aisle. Staples (oil, flour, spices,
+// stock, sauces) are assumed to be in the cupboard, so they aren't listed.
+function pantryChoices() {
+  const groups = {};
+  for (const [id, ing] of Object.entries(INGREDIENTS)) {
+    if (ing.staple) continue;
+    (groups[ing.aisle] = groups[ing.aisle] || []).push({ id, name: ingredientLabel(id) });
+  }
+  return Object.keys(groups).sort().map(aisle => ({ aisle, items: groups[aisle].sort((a, b) => a.name.localeCompare(b.name)) }));
+}
+
+const COOK_LIMIT = { almost: 2, close: 4 }; // most missing ingredients per group
+
+// Recipes ranked by what the household already has.
+//   ready:  nothing to buy
+//   almost: one or two things to buy, with what they'd cost at the chosen store
+//   close:  three or four to buy, but at least half the ingredients are in
+// Diet rules always apply; favourites come first within a group.
+function cookFromPantry(have, settings, priceFeed, overrides) {
+  const s = mergeSettings(settings);
+  const owned = new Set(have || []);
+  const out = { ready: [], almost: [], close: [] };
+  if (!owned.size) return out;
+  for (const r of RECIPES) {
+    if (!allowedRecipe(r, s.diets)) continue;
+    const needed = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple);
+    const got = needed.filter(id => owned.has(id));
+    if (!got.length) continue;
+    const missing = needed.filter(id => !owned.has(id)).map(id => ({
+      id, name: ingredientLabel(id), cost: priceOf(id, s.store, priceFeed, overrides),
+    }));
+    const entry = {
+      recipe: r, have: got, missing,
+      missingCost: Math.round(missing.reduce((t, m) => t + m.cost, 0) * 100) / 100,
+      coverage: got.length / needed.length,
+      favourite: isFavourite(s, r.id),
+    };
+    if (!missing.length) out.ready.push(entry);
+    else if (missing.length <= COOK_LIMIT.almost) out.almost.push(entry);
+    else if (missing.length <= COOK_LIMIT.close && entry.coverage >= 0.5) out.close.push(entry);
+  }
+  const fav = (a, b) => (b.favourite - a.favourite);
+  out.ready.sort((a, b) => fav(a, b) || b.have.length - a.have.length || a.recipe.mins - b.recipe.mins);
+  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.missingCost - b.missingCost);
+  out.close.sort((a, b) => fav(a, b) || b.coverage - a.coverage || a.missingCost - b.missingCost);
+  return out;
+}
+
+// Put a recipe into a day of the plan (the Cook tab's "Add to the week").
+// Returns the new plan; the caller recosts it like any swap.
+function placeRecipe(plan, dayIdx, recipeId, settings, cycle) {
+  const r = recipeById(recipeId);
+  return applySwap(plan, dayIdx, r.meal, recipeId, settings, cycle);
+}
 
 const { plateSVG, plateFor } = (() => {
 // Tafel dish illustrations: a stylised bite of each recipe on a fork (or a spoonful), drawn from its real ingredients.
@@ -1055,7 +1131,7 @@ return { plateSVG, plateFor };
 // ---------------- State ----------------
 const HEART='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
 const PLATE_THEME={dish:'var(--paper)',rim:'var(--hair)',shadow:'#0000001c'};
-const TABS=[['plan','The week'],['list','Groceries'],['fitness','Training'],['settings','Settings']];
+const TABS=[['plan','The week'],['cook','Cook'],['list','Groceries'],['fitness','Training'],['settings','Settings']];
 let state={tab:'plan',day:todayIdx(),settings:mergeSettings(null),plan:null,locked:{},overrides:{},checked:{}};
 let priceFeed=null,db=null,userId=null,saveTimer=null,sheet=null,lastFocus=null;
 // Cycle dates are health information: kept in this browser only, never saved to the account.
@@ -1149,7 +1225,7 @@ function renderPlan(){
 
 function renderList(){
   const list=currentList(),s=state.settings;
-  const main=list.items.filter(i=>s.includeStaples||!i.staple),staples=list.items.filter(i=>i.staple&&!s.includeStaples);
+  const main=list.items.filter(i=>!i.have&&(s.includeStaples||!i.staple)),staples=list.items.filter(i=>i.staple&&!s.includeStaples&&!i.have),owned=list.items.filter(i=>i.have);
   const left=main.filter(i=>!state.checked[i.id]).length;
   let h=summary(list);
   let stores=`<div class="stores" role="group" aria-label="Store">`+Object.keys(STORES).map(k=>`<button class="store" data-store="${k}" aria-pressed="${s.store===k}"><span class="cap">${shortStore(k)}</span><span class="v">${money(list.byStore[k])}</span></button>`).join('')+`</div>`;
@@ -1164,6 +1240,7 @@ function renderList(){
   }
   lab+=`<div class="label-total"><span>Estimated total</span><span>${money2(list.total)}</span></div>`;
   if(staples.length)lab+=`<div class="label-foot">Check your cupboard for ${staples.map(i=>esc(i.name.replace(/ \(.*\)/,'').toLowerCase())).join(', ')}.</div>`;
+  if(owned.length)lab+=`<div class="label-foot">Already in your kitchen, so not counted: ${owned.map(i=>esc(i.name.replace(/ \(.*\)/,'').toLowerCase())).join(', ')}.</div>`;
   lab+=`</div><div class="actions"><button class="btn" data-act="copy">Copy list</button><button class="link" data-act="showtext">View as text</button>${Object.keys(state.checked).length?`<button class="link soft" data-act="uncheck">Untick all</button>`:''}</div>`;
   h+=sec('The list','',lab);
   const max=Math.max(...Object.values(list.byStore));
@@ -1222,6 +1299,32 @@ function renderFitness(){
   return h;
 }
 
+const COOK_GROUPS=[['ready','Ready to cook','Everything is in your kitchen.'],['almost','One or two things to buy','Short of a little. Prices are at your chosen store.'],['close','Worth a quick shop','Most of it is in. A few things to pick up.']];
+const COOK_SHOW={ready:12,almost:8,close:6};
+function renderCook(){
+  const s=state.settings,have=new Set(s.pantry);
+  let h=sec("What's in your kitchen",'',`<p class="para" style="margin-top:0">Tick what you have. Oil, flour, spices, stock cubes and sauces are taken as given.</p>
+    <div class="field"><label for="cook-q">Find an ingredient</label><input id="cook-q" type="search" autocomplete="off" value="${esc(state.cookQ||'')}" placeholder="Eggs, rice, onion…"></div>
+    <p class="soft" id="cook-none" hidden>No ingredient matches that. Try a shorter word.</p>`+
+    pantryChoices().map(g=>`<div class="field pan-group" style="margin-top:22px"><span class="lbl">${esc(g.aisle)}</span><div class="opts">${g.items.map(i=>`<button class="opt" data-pan="${i.id}" data-name="${esc(i.name.toLowerCase())}" aria-pressed="${have.has(i.id)}">${esc(i.name)}</button>`).join('')}</div></div>`).join('')+
+    (s.pantry.length?`<div class="actions" style="margin-top:18px"><span class="soft">${s.pantry.length} ticked</span><button class="link soft" data-act="panclear">Untick everything</button></div>`:'')+
+    `<div class="toggle" style="margin-top:14px"><label for="f-useup">Plan my week around these<small>New weeks lean on what you have, and those items come off your shopping list total.</small></label><input class="sw" type="checkbox" id="f-useup" data-set="useUpPantry" ${s.useUpPantry?'checked':''}></div>`);
+  if(!s.pantry.length)return h+sec('What you can make','',`<p class="para" style="margin-top:0">Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</p>`);
+  const res=cookFromPantry(s.pantry,s,priceFeed,state.overrides);
+  if(!res.ready.length&&!res.almost.length&&!res.close.length)return h+sec('What you can make','',`<p class="para" style="margin-top:0">Nothing fits yet. Add a few more things, like an onion, eggs or a tin of tomatoes.</p>`);
+  for(const [k,title,lead] of COOK_GROUPS){
+    const all=res[k];if(!all.length)continue;
+    const shown=state.cookMore&&state.cookMore[k]?all:all.slice(0,COOK_SHOW[k]);
+    h+=sec(`${title} (${all.length})`,'',`<p class="para" style="margin-top:0">${lead}</p><div class="meals">`+shown.map(e=>`<div class="meal cook"><button class="meal-main" data-recipe="${e.recipe.id}"><span class="thumb" aria-hidden="true">${plateSVG(e.recipe,PLATE_THEME,64)}</span><span class="meal-name">${e.favourite?'♥ ':''}${esc(e.recipe.name)}</span><span class="meal-meta">${cap1(e.recipe.meal)} &nbsp;•&nbsp; ${e.recipe.mins} min${e.missing.length?`<br><span class="need">Need ${e.missing.map(m=>`${esc(m.name.toLowerCase())} (${money2(m.cost)})`).join(', ')}</span>`:''}</span></button><span class="meal-act"><button class="link" data-place="${e.recipe.id}" aria-label="Add ${esc(e.recipe.name)} to the week">Add to week</button></span></div>`).join('')+`</div>`+(all.length>shown.length?`<div class="actions"><button class="link" data-more="${k}">Show all ${all.length}</button></div>`:''));
+  }
+  return h;
+}
+function filterPantry(){
+  const q=(state.cookQ||'').trim().toLowerCase();let any=false;
+  document.querySelectorAll('.pan-group').forEach(g=>{let n=0;g.querySelectorAll('[data-pan]').forEach(b=>{const on=!q||b.dataset.name.includes(q);b.hidden=!on;if(on)n++});g.hidden=!n;if(n)any=true});
+  const none=document.getElementById('cook-none');if(none)none.hidden=any;
+}
+
 function openSheet(s){lastFocus=document.activeElement;sheet=s;renderSheet()}
 function closeSheet(){sheet=null;renderSheet();if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
 function renderSheet(){
@@ -1234,6 +1337,10 @@ function renderSheet(){
     const cw=cyc();const alts=alternatives(state.plan,+d,slot,state.settings,priceFeed,state.overrides,cw);
     kicker='Swap';
     inner=`<h2 id="sh-t">${DAYS[d]} ${slot}</h2><p class="sub">Ordered by what each does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><span class="an">${a.favourite?'♥ ':''}${esc(a.recipe.name)}</span><small>${a.recipe.mins} min &nbsp;•&nbsp; ${a.nutrition.protein} g protein &nbsp;•&nbsp; ${a.nutrition.kcal} kcal${cw&&['period','recovery'].includes(cw[+d].phase)?` &nbsp;•&nbsp; ${a.nutrition.iron} mg iron`:''}</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
+  }else if(sheet.type==='place'){
+    const r=recipeById(sheet.id),slot=r.meal,s=state.settings,cur=currentList().total,cw=cyc();
+    kicker='Add to the week';
+    inner=`<h2 id="sh-t">${esc(r.name)}</h2><p class="sub">Pick a day for it as ${slot}. Each shows what it does to this week's total.</p>${s.useUpPantry?'':`<p class="para" style="margin-top:0">These count everything as bought. Turn on Plan my week around these, on the Cook tab, to leave what you have off the list.</p>`}`+(!s.meals[slot]?`<p class="para">You aren't planning ${slot} at the moment. Turn it on under Settings, Meals to plan.</p>`:DAYS.map((nm,d)=>{const trial=placeRecipe(state.plan,d,r.id,s,cw);const dl=Math.round(buildList(trial,s,priceFeed,state.overrides).total-cur);const now=state.plan.days[d][slot]&&recipeById(state.plan.days[d][slot]);return `<button class="alt" data-put="${d}"><span><span class="an">${nm}</span><small>${now?(now.id===r.id?'Already planned':'Instead of '+esc(now.name)):'No '+slot+' planned'}</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join(''));
   }else if(sheet.type==='recipe'){
     const r=recipeById(sheet.id),n=recipeNutrition(r),hh=eaters(state.settings);
     kicker='Recipe';
@@ -1251,8 +1358,9 @@ function renderSheet(){
 function render(){
   if(!state.plan)regenerate(true,true);
   document.getElementById('nav').innerHTML=TABS.map(([id,l])=>`<button class="tab" data-tab="${id}" ${state.tab===id?'aria-current="page"':''}>${l}</button>`).join('');
-  const v={plan:renderPlan,list:renderList,fitness:renderFitness,settings:renderSettings}[state.tab]();
+  const v={plan:renderPlan,cook:renderCook,list:renderList,fitness:renderFitness,settings:renderSettings}[state.tab]();
   document.getElementById('app').innerHTML=v;
+  if(state.tab==='cook')filterPantry();
   const ws=weekStart(),we=dayDate(6);
   document.getElementById('weekof').textContent=`${ws.getDate()}–${we.getDate()} ${we.toLocaleDateString('en-ZA',{month:'short'})}`;
   document.getElementById('cart').textContent=`(${money(currentList().total)})`;
@@ -1263,7 +1371,7 @@ function render(){
 // ---------------- Events ----------------
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal],[data-kid],[data-fav]');
+  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal],[data-kid],[data-fav],[data-pan],[data-place],[data-put],[data-more]');
   if(!t)return;
   if(t.dataset.close){if(t.classList.contains('sheet-bg')&&e.target!==t)return;closeSheet();return}
   const s=state.settings;
@@ -1275,6 +1383,10 @@ document.addEventListener('click',async e=>{
   if(t.dataset.fav){const id=t.dataset.fav,was=isFavourite(s,id);s.favourites=toggleFavourite(s,id);save();render();toast(was?'Removed from favourites':'Added to favourites. It will come up more often');return}
   if(t.dataset.kid){const g=t.dataset.kid;s.kids[g]=Math.min(8,Math.max(0,(s.kids[g]||0)+ +t.dataset.n));save();render();return}
   if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else{const [d,m]=k.split(':');state.locked[k]=state.plan.days[+d][m]}save();render();return}
+  if(t.dataset.pan){const id=t.dataset.pan,i=s.pantry.indexOf(id);if(i>=0)s.pantry.splice(i,1);else s.pantry.push(id);save();render();document.querySelector(`[data-pan="${id}"]`)?.focus();return}
+  if(t.dataset.place){openSheet({type:'place',id:t.dataset.place});return}
+  if(t.dataset.put){const d=+t.dataset.put,r=recipeById(sheet.id);state.plan=placeRecipe(state.plan,d,r.id,s,cyc());state.locked[`${d}:${r.meal}`]=r.id;sheet=null;save();render();toast(`Added to ${DAYS[d]} and kept`);return}
+  if(t.dataset.more){state.cookMore={...(state.cookMore||{}),[t.dataset.more]:true};render();return}
   if(t.dataset.swap){openSheet({type:'swap',key:t.dataset.swap});return}
   if(t.dataset.recipe){openSheet({type:'recipe',id:t.dataset.recipe});return}
   if(t.dataset.pick){const [d,slot]=sheet.key.split(':');state.plan=applySwap(state.plan,+d,slot,t.dataset.pick,s,cyc());state.locked[sheet.key]=t.dataset.pick;sheet=null;save();render();toast('Meal swapped and kept');return}
@@ -1284,6 +1396,7 @@ document.addEventListener('click',async e=>{
   if(a==='gen'){state.tab='plan';regenerate(true);window.scrollTo(0,0)}
   if(a==='genall'){regenerate(false)}
   if(a==='uncheck'){state.checked={};save();render()}
+  if(a==='panclear'){s.pantry=[];save();render()}
   if(a==='cyclear'){cycle={...DEFAULT_CYCLE};saveCycle();regenerate(true,true);toast('Cycle data cleared')}
   if(a==='showtext')openSheet({type:'text'});
   if(a==='copy'){try{await navigator.clipboard.writeText(listAsText(currentList(),s));toast('List copied')}catch(err){openSheet({type:'text'})}}
@@ -1297,6 +1410,8 @@ document.addEventListener('change',e=>{
   if(t.dataset.week){s.fitness.week[+t.dataset.week]=t.value;save();render();return}
   if(t.dataset.cy){const k=t.dataset.cy;let v=t.type==='checkbox'?t.checked:t.value;if(k==='length')v=Math.min(45,Math.max(20,+v||28));if(k==='periodDays')v=Math.min(10,Math.max(2,+v||5));if(k==='lastStart'&&!v)v=null;cycle={...cycle,[k]:v};saveCycle();if(cycle.enabled&&cycle.lastStart)regenerate(true,true);render();return}
 });
+
+document.addEventListener('input',e=>{if(e.target.id==='cook-q'){state.cookQ=e.target.value;filterPantry()}});
 
 // Re-plan straight away when a setting that affects meals changes (store choice excluded).
 let inputsBefore=null;

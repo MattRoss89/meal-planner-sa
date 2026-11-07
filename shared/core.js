@@ -274,6 +274,8 @@ export const DEFAULT_SETTINGS = {
   favourites: [], // recipe ids the household loves; suggested more often
   meals: { breakfast: true, lunch: true, dinner: true },
   includeStaples: false,
+  pantry: [],          // ingredient ids the household already has (the Cook tab)
+  useUpPantry: false,  // plan the week around what's in the pantry; owned items leave the list total
   fitness: {
     enabled: false,
     weightKg: 75, heightCm: 178, age: 30, sex: 'male',
@@ -296,6 +298,8 @@ export function mergeSettings(s) {
     diets: Array.isArray(s.diets) ? s.diets : [],
     prefs: Array.isArray(s.prefs) ? s.prefs : [],
     favourites: Array.isArray(s.favourites) ? s.favourites.filter(id => RECIPES.some(r => r.id === id)) : [],
+    pantry: Array.isArray(s.pantry) ? [...new Set(s.pantry)].filter(id => INGREDIENTS[id] && !INGREDIENTS[id].staple) : [],
+    useUpPantry: !!s.useUpPantry,
   };
 }
 
@@ -369,17 +373,19 @@ export function buildList(plan, settings, priceFeed, overrides) {
       if (sn) for (const [id, q] of Object.entries(sn.ing)) add(id, q);
     }
   }
+  const owned = new Set(s.useUpPantry && Array.isArray(s.pantry) ? s.pantry : []);
   const items = Object.entries(need).map(([id, qty]) => {
     const ing = INGREDIENTS[id];
     const pack = packOf(id, priceFeed);
     const packs = Math.max(1, Math.ceil(qty / pack - 1e-9));
     const unitPrice = priceOf(id, s.store, priceFeed, overrides);
     return {
-      id, name: ing.name, aisle: ing.aisle, staple: ing.staple, search: ing.search,
+      id, name: ing.name, aisle: ing.aisle, staple: ing.staple, have: owned.has(id), search: ing.search,
       qty, unit: ing.unit, packs, unitPrice, cost: Math.round(packs * unitPrice * 100) / 100,
     };
   }).sort((a, b) => a.aisle.localeCompare(b.aisle) || a.name.localeCompare(b.name));
-  const counted = items.filter(i => s.includeStaples || !i.staple);
+  // Staples are assumed in the cupboard unless counted; pantry items the household has are never bought.
+  const counted = items.filter(i => !i.have && (s.includeStaples || !i.staple));
   const total = Math.round(counted.reduce((t, i) => t + i.cost, 0) * 100) / 100;
   const byStore = {};
   for (const st of Object.keys(STORES)) {
@@ -399,12 +405,14 @@ export function listAsText(list, settings) {
   const lines = [`Grocery list (${STORES[settings.store].name}) ~R${Math.round(list.total)}`];
   let aisle = '';
   for (const i of list.items) {
-    if (!settings.includeStaples && i.staple) continue;
+    if ((!settings.includeStaples && i.staple) || i.have) continue;
     if (i.aisle !== aisle) { aisle = i.aisle; lines.push('', aisle.toUpperCase()); }
     lines.push(`- ${i.name} x${i.packs}  (R${i.cost.toFixed(2)})`);
   }
   const st = list.items.filter(i => i.staple && !settings.includeStaples);
   if (st.length) lines.push('', 'CHECK PANTRY', ...st.map(i => `- ${i.name}`));
+  const hv = list.items.filter(i => i.have);
+  if (hv.length) lines.push('', 'ALREADY HAVE', ...hv.map(i => `- ${ingredientLabel(i.id)}`));
   return lines.join('\n');
 }
 
@@ -582,8 +590,9 @@ export function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
 // What feeds the planner (store choice excluded: it only changes prices, not meals).
 export function planInputsKey(settings, overrides) {
   // Store and favourites don't re-plan the current week; favourites shape the next plan.
-  const { store, favourites, ...rest } = mergeSettings(settings);
-  return JSON.stringify([rest, overrides || {}]);
+  const { store, favourites, pantry, ...rest } = mergeSettings(settings);
+  // The pantry only shapes the plan when the household asks Tafel to use it up.
+  return JSON.stringify([rest, rest.useUpPantry ? [...pantry].sort() : null, overrides || {}]);
 }
 
 // Kept meals that still fit the current settings.
@@ -599,3 +608,64 @@ export function validLocks(locked, settings) {
 }
 
 export function storeSearchUrl(store, item) { return STORES[store].search(item.search); }
+
+// ---------- Cook from what you have ----------
+// An ingredient's everyday name, without the pack size: "Eggs (18)" -> "Eggs".
+export function ingredientLabel(id) {
+  return INGREDIENTS[id].name.replace(/\s*\(.*\)\s*$/, '');
+}
+
+// Ingredients a household can tick off, by aisle. Staples (oil, flour, spices,
+// stock, sauces) are assumed to be in the cupboard, so they aren't listed.
+export function pantryChoices() {
+  const groups = {};
+  for (const [id, ing] of Object.entries(INGREDIENTS)) {
+    if (ing.staple) continue;
+    (groups[ing.aisle] = groups[ing.aisle] || []).push({ id, name: ingredientLabel(id) });
+  }
+  return Object.keys(groups).sort().map(aisle => ({ aisle, items: groups[aisle].sort((a, b) => a.name.localeCompare(b.name)) }));
+}
+
+export const COOK_LIMIT = { almost: 2, close: 4 }; // most missing ingredients per group
+
+// Recipes ranked by what the household already has.
+//   ready:  nothing to buy
+//   almost: one or two things to buy, with what they'd cost at the chosen store
+//   close:  three or four to buy, but at least half the ingredients are in
+// Diet rules always apply; favourites come first within a group.
+export function cookFromPantry(have, settings, priceFeed, overrides) {
+  const s = mergeSettings(settings);
+  const owned = new Set(have || []);
+  const out = { ready: [], almost: [], close: [] };
+  if (!owned.size) return out;
+  for (const r of RECIPES) {
+    if (!allowedRecipe(r, s.diets)) continue;
+    const needed = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple);
+    const got = needed.filter(id => owned.has(id));
+    if (!got.length) continue;
+    const missing = needed.filter(id => !owned.has(id)).map(id => ({
+      id, name: ingredientLabel(id), cost: priceOf(id, s.store, priceFeed, overrides),
+    }));
+    const entry = {
+      recipe: r, have: got, missing,
+      missingCost: Math.round(missing.reduce((t, m) => t + m.cost, 0) * 100) / 100,
+      coverage: got.length / needed.length,
+      favourite: isFavourite(s, r.id),
+    };
+    if (!missing.length) out.ready.push(entry);
+    else if (missing.length <= COOK_LIMIT.almost) out.almost.push(entry);
+    else if (missing.length <= COOK_LIMIT.close && entry.coverage >= 0.5) out.close.push(entry);
+  }
+  const fav = (a, b) => (b.favourite - a.favourite);
+  out.ready.sort((a, b) => fav(a, b) || b.have.length - a.have.length || a.recipe.mins - b.recipe.mins);
+  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.missingCost - b.missingCost);
+  out.close.sort((a, b) => fav(a, b) || b.coverage - a.coverage || a.missingCost - b.missingCost);
+  return out;
+}
+
+// Put a recipe into a day of the plan (the Cook tab's "Add to the week").
+// Returns the new plan; the caller recosts it like any swap.
+export function placeRecipe(plan, dayIdx, recipeId, settings, cycle) {
+  const r = recipeById(recipeId);
+  return applySwap(plan, dayIdx, r.meal, recipeId, settings, cycle);
+}

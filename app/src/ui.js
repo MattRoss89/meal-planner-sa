@@ -45,6 +45,8 @@ const PATHS = {
   check: [['path', 'm5 12.5 4.5 4.5L19 7.5']],
   heart: [['path', 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z']],
   run: [['circle', { cx: 14, cy: 4.5, r: 1.8 }], ['path', 'm8 21 3-6 3 2v4M6 12l3-4 4 1 2 3 3 1']],
+  cook: [['path', 'M4 10h16v5.5A4.5 4.5 0 0 1 15.5 20h-7A4.5 4.5 0 0 1 4 15.5V10Z'], ['path', 'M2.5 10h19M9 6.5c0-1.2 1.2-1.6 1.2-3M13.8 6.5c0-1.2 1.2-1.6 1.2-3']],
+  search: [['circle', { cx: 11, cy: 11, r: 6.5 }], ['path', 'm16 16 4 4']],
 };
 export function Icon({ name, size = 20, color, filled }) {
   const t = useT();

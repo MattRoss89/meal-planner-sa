@@ -16,6 +16,7 @@ import {
   cycleWeek, planTargets, planInputsKey, validLocks, isFavourite, toggleFavourite, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
+  pantryChoices, cookFromPantry, placeRecipe,
 } from './src/core';
 import {
   firebaseReady, watchUser, signInWithGoogleWeb, signInWithGoogleIdToken, signOut,
@@ -188,7 +189,8 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
   const t = useT();
   const s = data.settings;
   const list = buildList(data.plan, s, priceFeed, data.overrides);
-  const main = list.items.filter(i => s.includeStaples || !i.staple), staples = list.items.filter(i => i.staple && !s.includeStaples);
+  const main = list.items.filter(i => !i.have && (s.includeStaples || !i.staple)), staples = list.items.filter(i => i.staple && !s.includeStaples && !i.have);
+  const owned = list.items.filter(i => i.have);
   const left = main.filter(i => !data.checked[i.id]).length;
   const max = Math.max(...Object.values(list.byStore));
   let aisle = '';
@@ -247,6 +249,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
           <T font="slip" size={12} color={t.paperMuted}>{list.total > s.weeklyBudget ? money(list.total - s.weeklyBudget) + ' over' : money(s.weeklyBudget - list.total) + ' under'}</T></View>
         {staples.length > 0 && <><View style={{ marginTop: 12 }}><Dashed color={t.paperLine} /></View>
           <T font="slip" size={12.5} color={t.paperMuted} style={{ marginTop: 8 }}>Check your cupboard for {staples.map(i => i.name.replace(/ \(.*\)/, '').toLowerCase()).join(', ')}.</T></>}
+        {owned.length > 0 && <T font="slip" size={12.5} color={t.paperMuted} style={{ marginTop: 8 }}>Already in your kitchen, so not counted: {owned.map(i => i.name.replace(/ \(.*\)/, '').toLowerCase()).join(', ')}.</T>}
       </View>
       <ZigZag color={t.paper} />
     </View>
@@ -411,6 +414,61 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
   </View>;
 }
 
+// ---------- cook from what you have ----------
+const COOK_GROUPS = [
+  ['ready', 'Ready to cook', 'Everything is in your kitchen.'],
+  ['almost', 'One or two things to buy', 'Short of a little. Prices are at your chosen store.'],
+  ['close', 'Worth a quick shop', 'Most of it is in. A few things to pick up.'],
+];
+const COOK_SHOW = { ready: 12, almost: 8, close: 6 };
+
+function CookScreen({ data, update, priceFeed, openSheet }) {
+  const t = useT();
+  const s = data.settings;
+  const [q, setQ] = useState('');
+  const [more, setMore] = useState({});
+  const have = new Set(s.pantry);
+  const toggle = id => update(d => { const a = d.settings.pantry; const i = a.indexOf(id); if (i >= 0) a.splice(i, 1); else a.push(id); });
+  const query = q.trim().toLowerCase();
+  const groups = pantryChoices().map(g => ({ ...g, items: query ? g.items.filter(i => i.name.toLowerCase().includes(query)) : g.items })).filter(g => g.items.length);
+  const res = cookFromPantry(s.pantry, s, priceFeed, data.overrides);
+  const found = res.ready.length + res.almost.length + res.close.length;
+  return <View>
+    <Section title="What's in your kitchen" lead="Tick what you have. Oil, flour, spices, stock cubes and sauces are taken as given.">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderColor: t.ink }}>
+        <Icon name="search" size={18} />
+        <TextInput value={q} onChangeText={setQ} placeholder="Find an ingredient" placeholderTextColor={t.muted} accessibilityLabel="Find an ingredient"
+          style={{ flex: 1, paddingVertical: 10, color: t.ink, fontFamily: FONTS.body, fontSize: 16 }} />
+        {q ? <TouchableOpacity onPress={() => setQ('')} accessibilityRole="button" style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}><T muted style={{ textDecorationLine: 'underline' }}>Clear</T></TouchableOpacity> : null}
+      </View>
+      {groups.length === 0 && <T muted size={13.5}>No ingredient called "{q.trim()}". Try a shorter word.</T>}
+      {groups.map(g => <Field key={g.aisle} label={g.aisle}><Chips>{g.items.map(i => <Chip key={i.id} label={i.name} on={have.has(i.id)} onPress={() => toggle(i.id)} />)}</Chips></Field>)}
+      {s.pantry.length > 0 && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <T muted size={13.5}>{s.pantry.length} ticked</T>
+        <Btn title="Untick everything" kind="ghost" onPress={() => update(d => { d.settings.pantry = []; })} />
+      </View>}
+      <SwitchRow title="Plan my week around these" sub="New weeks lean on what you have, and those items come off your shopping list total." value={s.useUpPantry} onChange={v => update(d => { d.settings.useUpPantry = v; })} />
+    </Section>
+    {s.pantry.length === 0 ? <Section title="What you can make"><T muted>Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</T></Section>
+      : found === 0 ? <Section title="What you can make"><T muted>Nothing fits yet. Add a few more things, like an onion, eggs or a tin of tomatoes.</T></Section>
+      : COOK_GROUPS.map(([k, title, lead]) => res[k].length === 0 ? null : <Section key={k} title={`${title} (${res[k].length})`} lead={lead}>
+        <View style={{ borderTopWidth: 1, borderColor: t.line }}>
+          {res[k].slice(0, more[k] ? undefined : COOK_SHOW[k]).map(e => <View key={e.recipe.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line }}>
+            <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: e.recipe.id })} accessibilityLabel={`Open recipe: ${e.recipe.name}`}><Plate recipe={e.recipe} size={52} theme={t} /></TouchableOpacity>
+            <View style={{ flex: 1, gap: 3 }}>
+              <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: e.recipe.id })}><H size={18}>{e.favourite ? '♥ ' : ''}{e.recipe.name}</H></TouchableOpacity>
+              <T muted size={13}>{cap(e.recipe.meal)}  •  {e.recipe.mins} min</T>
+              {e.missing.length > 0 && <T size={13} color={t.train}>Need {e.missing.map(m => `${m.name.toLowerCase()} (${money2(m.cost)})`).join(', ')}</T>}
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Add ${e.recipe.name} to the week`} onPress={() => openSheet({ type: 'place', id: e.recipe.id })}
+              style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}><T size={13.5} style={{ textDecorationLine: 'underline' }}>Add to week</T></TouchableOpacity>
+          </View>)}
+        </View>
+        {res[k].length > COOK_SHOW[k] && !more[k] && <Btn title={`Show all ${res[k].length}`} onPress={() => setMore(m => ({ ...m, [k]: true }))} />}
+      </Section>)}
+  </View>;
+}
+
 // ---------- sheet ----------
 function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
   const t = useT();
@@ -428,6 +486,21 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
         return <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s, cyc); x.locked[sheet.key] = a.recipe.id; }); close(); toast('Meal swapped and kept'); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderColor: t.line }}>
           <View style={{ flex: 1 }}><T font="semi">{a.favourite ? '♥ ' : ''}{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal{cyc && (cyc[+d].phase === 'period' || cyc[+d].phase === 'recovery') ? `, ${a.nutrition.iron} mg iron` : ''}</T></View>
+          <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
+        </TouchableOpacity>;
+      })}</>;
+  } else if (sheet.type === 'place') {
+    const r = recipeById(sheet.id), slot = r.meal;
+    const cur = buildList(data.plan, s, priceFeed, data.overrides).total;
+    body = <><H size={22}>Add {r.name} to the week</H><T muted size={14} style={{ marginBottom: 10 }}>Pick a day for it as {slot}. Each shows what it does to this week's total.</T>
+      {!s.useUpPantry && <T muted size={13} style={{ marginBottom: 10 }}>These count everything as bought. Turn on Plan my week around these, on the Cook tab, to leave what you have off the list.</T>}
+      {!s.meals[slot] ? <T muted>You aren't planning {slot} at the moment. Turn it on under Settings, Meals to plan.</T> : DAYS.map((nm, d) => {
+        const trial = placeRecipe(data.plan, d, r.id, s, cyc);
+        const dl = Math.round(buildList(trial, s, priceFeed, data.overrides).total - cur);
+        const now = data.plan.days[d][slot] && recipeById(data.plan.days[d][slot]);
+        return <TouchableOpacity key={nm} accessibilityRole="button" onPress={() => { update(x => { x.plan = placeRecipe(x.plan, d, r.id, s, cyc); x.locked[`${d}:${slot}`] = r.id; }); close(); toast(`Added to ${nm} and kept`); }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, minHeight: 44, borderBottomWidth: 1, borderColor: t.line }}>
+          <View style={{ flex: 1 }}><T font="semi">{nm}</T><T muted size={13}>{now ? (now.id === r.id ? 'Already planned' : `Instead of ${now.name}`) : `No ${slot} planned`}</T></View>
           <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
         </TouchableOpacity>;
       })}</>;
@@ -522,7 +595,7 @@ function AccountSection({ user, ent, billing, onSignOut }) {
 }
 
 // ---------- root ----------
-const TABS = [['plan', 'The week'], ['list', 'Groceries'], ['fitness', 'Training'], ['settings', 'Settings']];
+const TABS = [['plan', 'The week'], ['cook', 'Cook'], ['list', 'Groceries'], ['fitness', 'Training'], ['settings', 'Settings']];
 
 function TabBar({ tab, setTab, wide }) {
   const t = useT();
@@ -649,6 +722,7 @@ function Main() {
           {ent.kind === 'past_due' && <TouchableOpacity onPress={() => setTab('settings')} style={{ backgroundColor: theme.badSoft, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 }}>
             <T size={13.5} color={theme.bad}>Your last payment didn't go through. Update your card in Settings.</T></TouchableOpacity>}
           {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} cyc={cyc} toast={toast} />}
+          {tab === 'cook' && <CookScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} />}
           {tab === 'list' && <ListScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} toast={toast} />}
           {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} cycle={cycle} setCycle={setCycle} />}
           {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={doSignOut} ent={ent} billing={billing} />}
