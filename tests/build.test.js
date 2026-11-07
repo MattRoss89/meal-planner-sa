@@ -56,7 +56,18 @@ describe('pages build', () => {
       const html = readFileSync(root + f, 'utf8');
       assert.ok(html.includes('function generatePlan'), f);
       assert.doesNotMatch(html, /^export /m, f);
-      new Function(html.match(/<script>([\s\S]*)<\/script>/)[1]); // parses
+      for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(m[1]); // every inline script parses
     }
+  });
+});
+
+describe('swap demo', () => {
+  test('the website inlines the prebuilt swap demo', () => {
+    execFileSync('node', [root + 'site/build.mjs']);
+    const html = readFileSync(root + 'site/index.html', 'utf8');
+    assert.ok(html.includes('id="swap-demo"'), 'mount point');
+    assert.ok(html.includes('.tf-sheet'), 'demo CSS inlined');
+    assert.ok(html.includes('swap-replay'), 'demo JS inlined');
+    assert.doesNotMatch(html, /\/\*__DEMO_(CSS|JS)__\*\//, 'placeholders replaced');
   });
 });

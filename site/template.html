@@ -113,6 +113,13 @@ section{padding:clamp(72px,10vw,140px) 0}
 .split h2{font-size:clamp(36px,4.6vw,64px);line-height:1.02}
 .split .sticky p{margin-top:22px;max-width:36ch;color:var(--soft);font-size:17px}
 @media (max-width:900px){.split{grid-template-columns:1fr}.sticky{position:static}}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.swap-fig{margin:40px 0 0;max-width:400px}
+.swap-fig figcaption{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-top:14px;font-size:14px;color:var(--soft)}
+#swap-demo{position:relative}
+.swap-replay{position:absolute;right:0;bottom:-47px;font-size:14px;min-height:44px;min-width:44px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+.swap-fig figcaption{padding-right:70px}
+/*__DEMO_CSS__*/
 .steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
 .steps li{display:grid;grid-template-columns:84px 1fr;gap:20px;padding:34px 0;border-bottom:1px solid var(--hair)}
 .steps .n{font:400 40px/1 var(--serif);color:var(--oil)}
@@ -227,6 +234,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
     <p class="cap kicker">How it works</p>
     <h2>You set the rules. Tafel does the Sunday-night maths.</h2>
     <p>No meal-kit subscription and no imported recipes you can't shop for here. It's built from the ingredients on every South African shelf.</p>
+    <figure class="swap-fig">
+      <div id="swap-demo"></div>
+      <figcaption>Swap a dinner and see what it does to the week before you commit.<span class="vh"> In the animation, Friday's pilchard fishcakes are swapped for a mince and cabbage stir-fry, and the week's groceries drop from R996 to R968, leaving R232 to spare.</span></figcaption>
+    </figure>
   </div>
   <ol class="steps">
     <li><span class="n">01</span><div><h3>Say what matters</h3><p>How many people you're feeding, what you can spend, and what's off the table. Vegetarian, halal, gluten-free, nut-free and more. Recipes that break a rule never appear.</p>
@@ -347,5 +358,6 @@ plan();
   document.getElementById('t-total').textContent=t.days.reduce((a,d)=>a+d.kcal,0).toLocaleString('en-ZA');
 })();
 </script>
+<script>/*__DEMO_JS__*/</script>
 </body>
 </html>
