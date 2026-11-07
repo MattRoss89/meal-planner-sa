@@ -8,7 +8,8 @@ const PAL = {
   egg: '#fbf7ee', yolk: '#e9b23c', lentil: '#c4693a', chickpea: '#dbb46c', soya: '#a3794f', beans: '#a5513c', pork: '#d9a582', stew: '#6f3f2b',
   tomato: '#c8432f', leaf: '#557d3b', carrot: '#df7a38', squash: '#e49a3b', cabbage: '#cbd8a4', pepper: '#6e9b3d', mushroom: '#b9a589',
   onion: '#e9dfcc', sweet: '#d77f39', avo: '#8fb04f', pea: '#7da84b', banana: '#efd36c', apple: '#c84a3c', cheese: '#ebc561',
-  curry: '#d3913a', coconut: '#efe4c9', redsauce: '#b8432f', yoghurt: '#f6f1e6', milk: '#f7f3ea', bread: '#d6ad78', crust: '#a9763f', wrap: '#e7cf9b', pb: '#a8723f',
+  curry: '#d3913a', coconut: '#efe4c9', redsauce: '#b8432f', liver: '#6a2e25', corn: '#f0c94a', gem: '#e3ad48', bacon: '#c25f48', lemon: '#f1da5a',
+  yoghurt: '#f6f1e6', milk: '#f7f3ea', bread: '#d6ad78', crust: '#a9763f', wrap: '#e7cf9b', pb: '#a8723f',
 };
 
 // ingredient -> { role, color, shape }
@@ -24,6 +25,7 @@ const MAP = {
   onion: ['veg', 'onion', 'ring'], sweet_potato: ['veg', 'sweet', 'cube'], avocado: ['veg', 'avo', 'slice'], frozen_peas: ['veg', 'pea', 'dot'],
   frozen_veg: ['veg', 'carrot', 'cube'], banana: ['veg', 'banana', 'coin'], apple: ['veg', 'apple', 'slice'], cheese: ['top', 'cheese', 'shred'],
   chakalaka: ['sauce', 'redsauce', 'pool'], tomato_can: ['sauce', 'redsauce', 'pool'], coconut_milk: ['sauce', 'coconut', 'pool'], curry: ['sauce', 'curry', 'pool'],
+  chicken_livers: ['main', 'liver', 'chunk'], bacon: ['main', 'bacon', 'slice'], sweetcorn: ['veg', 'corn', 'dot'], gem_squash: ['veg', 'gem', 'cube'], lemon: ['veg', 'lemon', 'slice'],
   bread: ['side', 'bread', 'slice'], wraps: ['side', 'wrap', 'half'], peanut_butter: ['top', 'pb', 'smear'],
 };
 
@@ -42,6 +44,12 @@ function scatter(rand, n, cx, cy, r, minD = 0) {
     if (pts.every(q => Math.hypot(q.x - p.x, q.y - p.y) >= minD)) pts.push(p);
   }
   return pts;
+}
+
+// Porridge, yoghurt and soup are eaten with a spoon.
+export function isSpoonDish(recipe) {
+  const bowlish = ['oats', 'yoghurt', 'milk'].some(id => recipe.ing[id]) || (recipe.meal === 'breakfast' && recipe.ing.maize_meal);
+  return /soup/i.test(recipe.name) || (recipe.meal === 'breakfast' && !!bowlish && !recipe.ing.bread && !recipe.ing.flour);
 }
 
 // A single bite: the dish's ingredients speared on a fork (or a spoonful for porridge, yoghurt and soup).

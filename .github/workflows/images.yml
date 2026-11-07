@@ -1,0 +1,53 @@
+name: Generate recipe photos
+
+# Run by hand from the Actions tab. Uses Google's Nano Banana (Gemini image) model with the
+# GEMINI_API_KEY secret, then pushes the photos to a branch so you can review them in a pull request
+# (which gets its own preview link) before they go live.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these recipe ids, comma-separated (blank = every recipe without a photo)"
+        required: false
+        default: ""
+      force:
+        description: "Redo recipes that already have a photo"
+        type: boolean
+        default: false
+      model:
+        description: "Gemini image model id"
+        required: false
+        default: "gemini-2.5-flash-image"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install image tools
+        run: npm install --no-save --no-audit --no-fund sharp@0.34
+      - name: Generate photos
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_IMAGE_MODEL: ${{ inputs.model }}
+          ONLY: ${{ inputs.only }}
+          FORCE: ${{ inputs.force }}
+        run: node scripts/gen-images.mjs
+      - name: Push to a review branch
+        run: |
+          npm run sync
+          BRANCH="photos/run-${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add app/public/recipes shared/photos.js app/src/photos.js
+          git commit -m "Recipe photos (Nano Banana, ${{ inputs.model }})" || { echo "No new photos"; exit 0; }
+          git push origin "$BRANCH"
+          echo "### Photos ready for review" >> $GITHUB_STEP_SUMMARY
+          echo "Open a pull request from **$BRANCH**: https://github.com/${{ github.repository }}/compare/main...$BRANCH?expand=1" >> $GITHUB_STEP_SUMMARY

@@ -43,12 +43,13 @@ const PATHS = {
   copy: [['rect', { x: 8, y: 8, width: 12, height: 12, rx: 2 }], ['path', 'M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2']],
   text: [['path', 'M5 6h14M5 10h14M5 14h9M5 18h6']],
   check: [['path', 'm5 12.5 4.5 4.5L19 7.5']],
+  heart: [['path', 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z']],
   run: [['circle', { cx: 14, cy: 4.5, r: 1.8 }], ['path', 'm8 21 3-6 3 2v4M6 12l3-4 4 1 2 3 3 1']],
 };
-export function Icon({ name, size = 20, color }) {
+export function Icon({ name, size = 20, color, filled }) {
   const t = useT();
   const c = color || t.muted;
-  const common = { stroke: c, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const common = { stroke: c, strokeWidth: 1.8, fill: filled ? c : 'none', strokeLinecap: 'round', strokeLinejoin: 'round' };
   return <Svg width={size} height={size} viewBox="0 0 24 24">
     {PATHS[name].map(([k, v], i) => k === 'path' ? <Path key={i} d={v} {...common} />
       : k === 'rect' ? <Rect key={i} {...v} {...common} /> : <Circle key={i} {...v} {...common} />)}

@@ -183,3 +183,36 @@ describe('cycle-aware planning', () => {
     w.forEach((x, i) => assert.equal(cyc.days[i].kcal - plain.days[i].kcal, x.phase === 'luteal' ? C.LUTEAL_TOPUP_KCAL : 0));
   });
 });
+
+describe('favourites', () => {
+  const favs = ['d_wors_pap', 'd_bobotie', 'd_mac_cheese'];
+  test('favourites are suggested more often', () => {
+    let withFav = 0, without = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const a = C.generatePlan({ weeklyBudget: 2500 }, null, null, { seed, iterations: 80 });
+      const b = C.generatePlan({ weeklyBudget: 2500, favourites: favs }, null, null, { seed, iterations: 80 });
+      without += meals(a.plan).filter(id => favs.includes(id)).length;
+      withFav += meals(b.plan).filter(id => favs.includes(id)).length;
+    }
+    assert.ok(withFav > without * 2 && withFav >= 16, `${withFav} vs ${without}`);
+  });
+  test('favourites never override dietary rules', () => {
+    const res = plan({ diets: ['vegetarian'], favourites: favs });
+    for (const id of meals(res.plan)) assert.ok(C.allowedRecipe(C.recipeById(id), ['vegetarian']), id);
+  });
+  test('toggling a favourite adds and removes it, and does not re-plan the current week', () => {
+    const s = C.mergeSettings({});
+    const on = C.toggleFavourite(s, 'd_bobotie');
+    assert.deepEqual(on, ['d_bobotie']);
+    assert.deepEqual(C.toggleFavourite({ favourites: on }, 'd_bobotie'), []);
+    assert.equal(C.planInputsKey(s, {}), C.planInputsKey({ ...s, favourites: on }, {}));
+  });
+  test('unknown recipe ids are dropped from favourites', () => {
+    assert.deepEqual(C.mergeSettings({ favourites: ['d_bobotie', 'nope'] }).favourites, ['d_bobotie']);
+  });
+  test('swap options list favourites first', () => {
+    const res = plan({});
+    const alts = C.alternatives(res.plan, 0, 'dinner', { favourites: ['d_lemon_hake'] }, null, null);
+    assert.equal(alts[0].recipe.id === 'd_lemon_hake' || res.plan.days[0].dinner === 'd_lemon_hake', true);
+  });
+});

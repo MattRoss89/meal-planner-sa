@@ -8,7 +8,7 @@ import { plateFor, plateSVG } from '../shared/plate.js';
 const root = new URL('..', import.meta.url).pathname;
 
 describe('app copies of shared code', () => {
-  for (const f of ['core.js', 'plate.js', 'billing.js']) {
+  for (const f of ['core.js', 'plate.js', 'billing.js', 'photos.js']) {
     test(`app/src/${f} matches shared/${f} (run "npm run sync" if this fails)`, () => {
       assert.equal(readFileSync(root + 'app/src/' + f, 'utf8'), readFileSync(root + 'shared/' + f, 'utf8'));
     });
@@ -27,6 +27,16 @@ describe('dish illustrations', () => {
   test('the same recipe always draws the same plate', () => {
     const r = C.RECIPES[5];
     assert.equal(JSON.stringify(plateFor(r)), JSON.stringify(plateFor(r)));
+  });
+});
+
+describe('recipe photos', () => {
+  test('every listed photo exists and belongs to a real recipe', async () => {
+    const { PHOTOS } = await import('../shared/photos.js');
+    for (const id of PHOTOS) {
+      assert.ok(C.recipeById(id), `photo for unknown recipe ${id}`);
+      assert.ok(existsSync(root + 'app/public/recipes/' + id + '.webp'), `missing photo file for ${id}`);
+    }
   });
 });
 

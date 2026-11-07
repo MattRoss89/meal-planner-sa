@@ -348,6 +348,11 @@ const INGREDIENTS = {
   frozen_veg:   I('Frozen mixed veg', 1000, 'g', 39.99, 'Frozen', '', 3, 60, 'frozen mixed vegetables'),
   frozen_peas:  I('Frozen peas', 1000, 'g', 34.99, 'Frozen', '', 5.4, 81, 'frozen peas'),
   mayo:         I('Mayonnaise', 750, 'g', 44.99, 'Tins & jars', 'e', 1, 500, 'mayonnaise'),
+  chicken_livers: I('Chicken livers', 500, 'g', 34.99, 'Meat & fish', 'c', 17, 120, 'chicken livers'),
+  bacon:        I('Bacon', 250, 'g', 54.99, 'Meat & fish', 'mp', 13, 400, 'streaky bacon 250g'),
+  sweetcorn:    I('Sweetcorn (410 g)', 1, 'ea', 17.99, 'Tins & jars', '', 7, 220, 'whole kernel corn tin'),
+  gem_squash:   I('Gem squash (4)', 4, 'ea', 24.99, 'Fruit & veg', '', 1.5, 60, 'gem squash'),
+  lemon:        I('Lemons (6)', 6, 'ea', 24.99, 'Fruit & veg', '', 0.5, 17, 'lemons'),
   oil:          I('Sunflower oil (2 L)', 2000, 'ml', 64.99, 'Pantry', '', 0, 880, 'sunflower oil 2l', true),
   flour:        I('Cake flour', 2500, 'g', 39.99, 'Pantry', 'g', 10, 350, 'cake flour', true),
   stock:        I('Stock cubes (12)', 12, 'ea', 19.99, 'Pantry', 'g', 0.5, 10, 'stock cubes', true),
@@ -359,8 +364,8 @@ const INGREDIENTS = {
 // Iron in mg per 100 g/ml (or per item for 'ea'), and ingredients that supply vitamin C,
 // which helps the body absorb iron from plant foods. Approximate values; SA maize meal and
 // bread flour are iron-fortified.
-const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0};
-const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg"]);
+const IRON = {"onion": 0.2, "tomato": 0.3, "potato": 0.8, "sweet_potato": 0.6, "carrot": 0.3, "cabbage": 4.7, "spinach": 2.7, "butternut": 8.4, "green_pepper": 0.4, "garlic": 0.5, "banana": 0.3, "apple": 0.2, "avocado": 1.1, "mushrooms": 0.5, "broccoli": 2.9, "chicken_pieces": 0.9, "chicken_breast": 0.7, "mince": 2.6, "boerewors": 2.0, "beef_stew": 2.6, "pork_chops": 0.8, "hake": 0.5, "tuna": 1.6, "pilchards": 8.0, "eggs": 0.9, "milk": 0.03, "cheese": 0.2, "butter": 0, "yoghurt": 0.1, "bread": 0.8, "wraps": 1.5, "rice": 0.8, "maize_meal": 3.8, "pasta": 1.3, "oats": 4.3, "samp": 3.0, "lentils": 7.5, "soya": 9.0, "baked_beans": 6.0, "chakalaka": 3.0, "chickpeas": 7.0, "tomato_can": 1.3, "coconut_milk": 6.6, "peanut_butter": 1.9, "frozen_veg": 0.8, "frozen_peas": 1.5, "mayo": 0.3, "oil": 0, "flour": 1.2, "stock": 0, "curry": 0, "soy_sauce": 2.0, "peri": 0, "chicken_livers": 9.0, "bacon": 0.6, "sweetcorn": 1.2, "gem_squash": 0.6, "lemon": 0.3};
+const VIT_C = new Set(["tomato", "green_pepper", "broccoli", "cabbage", "spinach", "potato", "sweet_potato", "tomato_can", "chakalaka", "butternut", "frozen_peas", "frozen_veg", "lemon", "gem_squash"]);
 for (const [id, ing] of Object.entries(INGREDIENTS)) { ing.iron = IRON[id] || 0; ing.vitC = VIT_C.has(id); }
 
 // ---------- Recipes ----------
@@ -414,6 +419,36 @@ const RECIPES = [
   R('d_hake_veg', 'Hake with roast butternut & broccoli', 'dinner', 40, { hake: 600, butternut: 1, broccoli: 1, oil: 30 }, ['Roast cubed butternut 25 min at 200°C.', 'Add hake and broccoli; roast 15 min more.'], true),
   R('d_garlic_chicken', 'Garlic chicken & broccoli', 'dinner', 25, { chicken_breast: 600, broccoli: 1, garlic: 0.5, butter: 30, spinach: 100 }, ['Pan-fry chicken in garlic butter.', 'Add broccoli and spinach; cook until tender.'], true),
   R('d_shakshuka', 'Shakshuka (eggs in tomato)', 'dinner', 25, { eggs: 8, tomato_can: 2, onion: 150, green_pepper: 2, oil: 15 }, ['Fry onion and pepper.', 'Add tomatoes, simmer 10 min.', 'Crack in eggs, cover and cook 6 min.'], true),
+  // More breakfasts
+  R('b_bacon_eggs', 'Bacon, eggs & grilled tomato', 'breakfast', 15, { bacon: 250, eggs: 8, tomato: 300, bread: 4 }, ['Fry bacon until crisp.', 'Fry eggs in the pan; grill halved tomatoes.', 'Serve with toast.'], true),
+  R('b_french_toast', 'French toast with banana', 'breakfast', 15, { bread: 8, eggs: 4, milk: 200, banana: 2, butter: 20 }, ['Whisk eggs and milk; soak the bread.', 'Fry in butter until golden.', 'Top with sliced banana.']),
+  R('b_mince_toast', 'Savoury mince on toast', 'breakfast', 25, { mince: 300, onion: 100, tomato_can: 1, bread: 8 }, ['Brown mince with onion.', 'Add tomatoes and simmer 10 min.', 'Spoon over toast.']),
+  R('b_flapjacks', 'Flapjacks with yoghurt & banana', 'breakfast', 25, { flour: 250, eggs: 2, milk: 400, yoghurt: 300, banana: 2, butter: 20 }, ['Whisk flour, eggs and milk into a batter.', 'Cook spoonfuls in a buttered pan until bubbles form, then flip.', 'Serve with yoghurt and banana.']),
+  // More lunches
+  R('l_corn_fritters', 'Sweetcorn fritters & salad', 'lunch', 25, { sweetcorn: 2, flour: 150, eggs: 2, tomato: 300, spinach: 100, oil: 30 }, ['Mix drained corn, flour and eggs.', 'Fry spoonfuls until golden on both sides.', 'Serve with tomato and spinach.']),
+  R('l_toasted_sarmie', 'Cheese & tomato toasted sarmies', 'lunch', 10, { bread: 8, cheese: 120, tomato: 200, butter: 30 }, ['Butter the outsides of the bread.', 'Fill with cheese and tomato.', 'Toast in a pan or sandwich press.']),
+  R('l_tuna_pasta_salad', 'Tuna & sweetcorn pasta salad', 'lunch', 20, { pasta: 300, tuna: 2, sweetcorn: 1, mayo: 80, green_pepper: 1 }, ['Cook and cool the pasta.', 'Mix with tuna, corn, chopped pepper and mayo.']),
+  R('l_bean_soup', 'Bean & vegetable soup', 'lunch', 35, { baked_beans: 2, carrot: 200, potato: 300, onion: 150, stock: 2, tomato_can: 1 }, ['Soften onion and carrot.', 'Add potato, tomatoes, beans, stock and 800 ml water.', 'Simmer 20 min.']),
+  R('l_gem_squash', 'Mince-stuffed gem squash', 'lunch', 40, { gem_squash: 4, mince: 300, onion: 100, cheese: 80 }, ['Boil gem squash halves 15 min.', 'Brown mince with onion.', 'Fill the squash, top with cheese and grill 5 min.'], true),
+  R('l_livers_toast', 'Peri-peri chicken livers on toast', 'lunch', 20, { chicken_livers: 500, peri: 40, onion: 150, bread: 8 }, ['Fry onion, add livers and cook 6 min.', 'Stir in peri-peri sauce.', 'Serve on toast.']),
+  R('l_chickpea_wraps', 'Smashed chickpea & avo wraps', 'lunch', 10, { wraps: 4, chickpeas: 1, avocado: 2, tomato: 200, lemon: 1 }, ['Mash chickpeas with avo and lemon juice.', 'Fill wraps with the mash and sliced tomato.']),
+  // More dinners
+  R('d_livers_pap', 'Peri-peri chicken livers & pap', 'dinner', 30, { chicken_livers: 500, peri: 60, onion: 150, tomato_can: 1, maize_meal: 400 }, ['Cook soft pap.', 'Fry onion and livers, add tomatoes and peri-peri; simmer 10 min.', 'Serve over pap.']),
+  R('d_mac_cheese', 'Macaroni & cheese with bacon', 'dinner', 35, { pasta: 500, cheese: 200, milk: 600, flour: 40, butter: 40, bacon: 150 }, ['Cook pasta; fry bacon pieces.', 'Make a cheese sauce with butter, flour, milk and cheese.', 'Mix everything and grill until bubbling.']),
+  R('d_chicken_pasta', 'Creamy chicken & mushroom pasta', 'dinner', 30, { chicken_breast: 400, pasta: 500, mushrooms: 250, milk: 400, cheese: 80, flour: 30 }, ['Fry sliced chicken and mushrooms.', 'Stir in flour, then milk and cheese to make a sauce.', 'Toss with pasta.']),
+  R('d_frikkadels', 'Frikkadels, mash & peas', 'dinner', 45, { mince: 500, onion: 100, eggs: 1, bread: 2, potato: 1000, frozen_peas: 300, butter: 30 }, ['Mix mince, grated onion, egg and soaked bread; shape balls.', 'Bake 25 min at 200°C.', 'Serve with mash and peas.']),
+  R('d_chicken_casserole', 'Chicken & veg casserole', 'dinner', 70, { chicken_pieces: 1200, potato: 600, carrot: 300, onion: 150, stock: 2, frozen_peas: 200 }, ['Brown chicken.', 'Add veg and stock; cover and bake 50 min at 180°C.', 'Stir in peas for the last 5 min.']),
+  R('d_hake_wraps', 'Crispy hake wraps with slaw', 'dinner', 30, { hake: 500, wraps: 6, cabbage: 0.25, carrot: 150, mayo: 60, lemon: 1, flour: 40, oil: 30 }, ['Dust hake in flour and pan-fry.', 'Toss shredded cabbage and carrot with mayo and lemon.', 'Fill wraps with fish and slaw.']),
+  R('d_pilchard_curry', 'Pilchard curry & rice', 'dinner', 30, { pilchards: 2, onion: 150, tomato_can: 1, curry: 15, potato: 400, rice: 300, oil: 15 }, ['Fry onion with curry powder.', 'Add potato, tomatoes and pilchards; simmer 15 min.', 'Serve with rice.']),
+  R('d_bean_curry', 'Bean curry & rice', 'dinner', 30, { baked_beans: 3, onion: 150, tomato_can: 1, curry: 15, rice: 300, spinach: 100, oil: 15 }, ['Fry onion with curry powder.', 'Add tomatoes and beans; simmer 15 min, stir in spinach.', 'Serve with rice.']),
+  R('d_braai_chops', 'Braaied chops, mielies & tomato salad', 'dinner', 40, { pork_chops: 800, sweetcorn: 2, tomato: 300, onion: 100, spinach: 100 }, ['Braai or grill the chops.', 'Heat the corn with a little butter.', 'Serve with a tomato, onion and spinach salad.']),
+  R('d_chakalaka_chicken', 'Chicken & chakalaka bake', 'dinner', 55, { chicken_pieces: 1200, chakalaka: 2, potato: 800 }, ['Put chicken and potato wedges in a dish.', 'Pour over chakalaka.', 'Bake 45 min at 200°C.']),
+  R('d_bunny_chow', 'Bean bunny chow', 'dinner', 40, { bread: 20, baked_beans: 2, potato: 400, onion: 150, curry: 15, tomato_can: 1, oil: 15 }, ['Make a bean and potato curry.', 'Hollow out quarter loaves of bread.', 'Fill with curry and top with the bread you removed.']),
+  R('d_lentil_bobotie', 'Lentil bobotie & rice', 'dinner', 55, { lentils: 250, onion: 150, bread: 2, milk: 250, eggs: 2, curry: 10, rice: 300, oil: 15 }, ['Cook lentils with onion and curry.', 'Mix in soaked bread; top with egg and milk.', 'Bake 25 min at 180°C; serve with rice.']),
+  R('d_bean_chilli', 'Bean & sweet potato chilli', 'dinner', 40, { baked_beans: 2, sweet_potato: 600, tomato_can: 2, onion: 150, green_pepper: 1, rice: 300, oil: 15 }, ['Fry onion and pepper.', 'Add cubed sweet potato, tomatoes and beans; simmer 25 min.', 'Serve with rice.']),
+  R('d_potato_omelette', 'Potato & onion omelette with salad', 'dinner', 30, { eggs: 8, potato: 500, onion: 150, spinach: 100, tomato: 200, oil: 30 }, ['Fry sliced potato and onion until soft.', 'Pour over beaten eggs and cook gently, then grill the top.', 'Serve with salad.']),
+  R('d_chicken_rice', 'One-pot chicken & rice', 'dinner', 50, { chicken_pieces: 1000, rice: 300, onion: 150, tomato_can: 1, frozen_veg: 300, stock: 2, oil: 15 }, ['Brown chicken with onion.', 'Add rice, tomatoes, stock and 600 ml water.', 'Cover and cook 25 min; stir in veg for the last 5.']),
+  R('d_lemon_hake', 'Lemon hake, potatoes & broccoli', 'dinner', 40, { hake: 600, lemon: 1, potato: 600, broccoli: 1, butter: 30 }, ['Roast potato chunks 25 min at 220°C.', 'Add hake with butter and lemon; roast 12 min.', 'Steam broccoli to serve.']),
   R('d_roast_chicken_veg', 'Roast chicken & veg', 'dinner', 55, { chicken_pieces: 1200, butternut: 1, broccoli: 1, onion: 150, oil: 30 }, ['Roast chicken with butternut and onion 45 min at 200°C.', 'Add broccoli for the last 10 min.'], true),
 ];
 
@@ -495,7 +530,7 @@ const KID_GROUPS = {
   teen:    { label: 'Ages 14–17', factor: 1.0 },
 };
 // Recipes most children happily eat (mild, familiar).
-const KID_FRIENDLY = new Set(['b_oats_banana','b_eggs_toast','b_maize_porridge','b_yog_oats','b_pb_toast','b_vegan_oats','b_fruit_yog','b_eggs_avo',
+const KID_FRIENDLY = new Set(['b_bacon_eggs','b_french_toast','b_mince_toast','b_flapjacks','l_toasted_sarmie','l_tuna_pasta_salad','l_corn_fritters','d_mac_cheese','d_chicken_pasta','d_frikkadels','d_chicken_casserole','d_hake_wraps','d_chicken_rice','d_potato_omelette','d_chakalaka_chicken','d_lemon_hake','b_oats_banana','b_eggs_toast','b_maize_porridge','b_yog_oats','b_pb_toast','b_vegan_oats','b_fruit_yog','b_eggs_avo',
   'l_tuna_wraps','l_chicken_sarmie','l_egg_wraps','l_quesadilla','l_pilchards_toast','l_butternut_soup','l_chakalaka_bread',
   'd_bolognese','d_wors_pap','d_hake_chips','d_fishcakes','d_cottage_pie','d_soya_bolognese','d_pork_mash','d_mushroom_pasta','d_stirfry','d_egg_fried_rice','d_tuna_bake','d_roast_chicken_veg','d_garlic_chicken','d_samp_beans']);
 
@@ -516,6 +551,7 @@ const DEFAULT_SETTINGS = {
   store: 'checkers',
   diets: [],
   prefs: [],
+  favourites: [], // recipe ids the household loves; suggested more often
   meals: { breakfast: true, lunch: true, dinner: true },
   includeStaples: false,
   fitness: {
@@ -539,6 +575,7 @@ function mergeSettings(s) {
     fitness: { ...d.fitness, ...(s.fitness || {}), week: (s.fitness && Array.isArray(s.fitness.week) && s.fitness.week.length === 7) ? s.fitness.week : d.fitness.week },
     diets: Array.isArray(s.diets) ? s.diets : [],
     prefs: Array.isArray(s.prefs) ? s.prefs : [],
+    favourites: Array.isArray(s.favourites) ? s.favourites.filter(id => RECIPES.some(r => r.id === id)) : [],
   };
 }
 
@@ -664,6 +701,14 @@ function dayNutrition(day) {
   return { protein, kcal, iron: Math.round(iron * 10) / 10 };
 }
 
+const FAVOURITE_BONUS = 45;
+const isFavourite = (settings, id) => !!(settings && settings.favourites && settings.favourites.includes(id));
+function toggleFavourite(settings, id) {
+  const f = new Set(settings.favourites || []);
+  if (f.has(id)) f.delete(id); else f.add(id);
+  return [...f];
+}
+
 // ---------- Planner ----------
 function rng(seed) { let x = seed >>> 0 || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
@@ -701,6 +746,8 @@ function evaluate(plan, settings, priceFeed, overrides, targets, opts) {
   const counts = {};
   for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl]) counts[d[sl]] = (counts[d[sl]] || 0) + 1;
   for (const c of Object.values(counts)) score -= (c - 1) * (c - 1) * 30; // repeats
+  // Favourites come up more often (repeats are still limited by the penalty above).
+  if (settings.favourites && settings.favourites.length) { const fav = new Set(settings.favourites); for (const id of Object.keys(counts)) if (fav.has(id)) score += FAVOURITE_BONUS * Math.min(counts[id], 2); }
   if (kidCount(settings) > 0) for (const d of plan.days) for (const sl of ['breakfast', 'lunch', 'dinner']) if (d[sl] && KID_FRIENDLY.has(d[sl])) score += 25;
   // Reward a mix of chicken / red meat / fish / meat-free dinners (within the diet).
   const kinds = new Set(plan.days.map(d => {
@@ -800,8 +847,8 @@ function alternatives(plan, dayIdx, slot, settings, priceFeed, overrides, cycle)
     trial.days[dayIdx][slot] = r.id;
     addSnacks(trial, s, targets);
     const list = buildList(trial, s, priceFeed, overrides);
-    return { recipe: r, total: list.total, nutrition: recipeNutrition(r) };
-  }).sort((a, b) => a.total - b.total);
+    return { recipe: r, total: list.total, nutrition: recipeNutrition(r), favourite: isFavourite(s, r.id) };
+  }).sort((a, b) => (b.favourite - a.favourite) || (a.total - b.total));
 }
 
 function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
@@ -814,7 +861,8 @@ function applySwap(plan, dayIdx, slot, recipeId, settings, cycle) {
 
 // What feeds the planner (store choice excluded: it only changes prices, not meals).
 function planInputsKey(settings, overrides) {
-  const { store, ...rest } = mergeSettings(settings);
+  // Store and favourites don't re-plan the current week; favourites shape the next plan.
+  const { store, favourites, ...rest } = mergeSettings(settings);
   return JSON.stringify([rest, overrides || {}]);
 }
 

@@ -13,7 +13,7 @@ import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium } from '@ex
 import * as Bodoni from '@expo-google-fonts/bodoni-moda';
 import {
   STORES, INGREDIENTS, DIETS, PREFERENCES, ACTIVITIES, GOALS, DAYS,
-  cycleWeek, planTargets, planInputsKey, validLocks, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
+  cycleWeek, planTargets, planInputsKey, validLocks, isFavourite, toggleFavourite, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
 } from './src/core';
@@ -112,7 +112,7 @@ function WeekStrip({ day, setDay, plan, settings, targets, cyc }) {
   </View>;
 }
 
-function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDay, narrow, cyc }) {
+function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDay, narrow, cyc, toast }) {
   const t = useT();
   const s = data.settings;
   const list = buildList(data.plan, s, priceFeed, data.overrides);
@@ -160,6 +160,9 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
               {r ? <H size={19}>{r.name}</H> : <T muted>No recipe fits your requirements</T>}
               {r && <T muted size={13.5}>{r.mins} min  •  {Math.round(rn.protein * p)} g protein{p !== 1 ? <T size={13.5} color={t.train}>  •  Your portion ×{p}</T> : null}</T>}
             </TouchableOpacity>
+            {r && <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: isFavourite(s, r.id) }} accessibilityLabel={isFavourite(s, r.id) ? `Remove ${r.name} from favourites` : `Add ${r.name} to favourites`}
+              onPress={() => { const fav = isFavourite(s, r.id); update(x => { x.settings.favourites = toggleFavourite(x.settings, r.id); }); toast(fav ? 'Removed from favourites' : 'Added to favourites. It will come up more often'); }}
+              style={{ paddingVertical: 6, paddingHorizontal: 4, marginRight: 6 }}><Icon name="heart" size={18} color={isFavourite(s, r.id) ? t.cycle : t.muted} filled={isFavourite(s, r.id)} /></TouchableOpacity>}
             {r && <TouchableOpacity accessibilityLabel={lk ? `Unlock ${r.name}` : `Keep ${r.name} when re-planning`} onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })}
               style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
               <T size={13.5} color={lk ? t.train : t.ink} style={{ textDecorationLine: 'underline' }}>{lk ? 'Kept' : 'Keep'}</T></TouchableOpacity>}
@@ -382,6 +385,13 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
       <Field label="Lean towards"><Chips>{Object.entries(PREFERENCES).map(([k, v]) => <Chip key={k} label={v.label} on={s.prefs.includes(k)} onPress={() => toggle('prefs', k)} />)}</Chips></Field>
       <T muted size={13}>For halal, buy halal-certified meat. Boerewors counts as containing pork; stock cubes, oats and soy sauce count as containing gluten.</T>
     </Section>
+    <Section title="Favourites" lead="Tap the heart on any meal or recipe. Favourites come up more often when you plan a new week, and they're listed first when you swap a meal.">
+      {s.favourites.length === 0 ? <T muted size={13.5}>No favourites yet.</T> :
+        <View style={{ borderTopWidth: 1, borderColor: t.line }}>{s.favourites.map(id => { const r = recipeById(id); return <View key={id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderColor: t.line }}>
+          <Plate recipe={r} size={40} theme={t} /><T style={{ flex: 1 }}>{r.name}</T>
+          <TouchableOpacity onPress={() => update(x => { x.settings.favourites = toggleFavourite(x.settings, id); })} accessibilityLabel={`Remove ${r.name} from favourites`}><T muted size={13.5} style={{ textDecorationLine: 'underline' }}>Remove</T></TouchableOpacity>
+        </View>; })}</View>}
+    </Section>
     <Section title="Your prices" lead="Base prices are Checkers. Type what you actually pay and the plan will use it.">
       <View style={{ borderWidth: 1, borderColor: t.line, borderRadius: 0, overflow: 'hidden' }}>
         {Object.entries(INGREDIENTS).sort((a, c) => a[1].aisle.localeCompare(c[1].aisle)).map(([id, ing]) => {
@@ -417,7 +427,7 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
         const dl = Math.round(a.total - cur);
         return <TouchableOpacity key={a.recipe.id} onPress={() => { update(x => { x.plan = applySwap(x.plan, +d, slot, a.recipe.id, s, cyc); x.locked[sheet.key] = a.recipe.id; }); close(); toast('Meal swapped and kept'); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderColor: t.line }}>
-          <View style={{ flex: 1 }}><T font="semi">{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal{cyc && (cyc[+d].phase === 'period' || cyc[+d].phase === 'recovery') ? `, ${a.nutrition.iron} mg iron` : ''}</T></View>
+          <View style={{ flex: 1 }}><T font="semi">{a.favourite ? '♥ ' : ''}{a.recipe.name}</T><T muted size={13}>{a.recipe.mins} min, {a.nutrition.protein} g protein, {a.nutrition.kcal} kcal{cyc && (cyc[+d].phase === 'period' || cyc[+d].phase === 'recovery') ? `, ${a.nutrition.iron} mg iron` : ''}</T></View>
           <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
         </TouchableOpacity>;
       })}</>;
@@ -425,6 +435,10 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
     const r = recipeById(sheet.id), n = recipeNutrition(r), hh = eaters(s);
     body = <><View style={{ backgroundColor: t.accentSoft, alignItems: 'center', paddingVertical: 22, marginHorizontal: -20, marginBottom: 18, borderBottomWidth: 1, borderColor: t.rule }}><Plate recipe={r} size={Math.min(240, width * 0.6)} theme={t} /></View>
       <H size={24}>{r.name}</H><T muted size={14}>{r.mins} minutes. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
+      <TouchableOpacity onPress={() => { const fav = isFavourite(s, r.id); update(x => { x.settings.favourites = toggleFavourite(x.settings, r.id); }); toast(fav ? 'Removed from favourites' : 'Added to favourites. It will come up more often'); }}
+        accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, alignSelf: 'flex-start' }}>
+        <Icon name="heart" size={18} color={isFavourite(s, r.id) ? t.cycle : t.ink} filled={isFavourite(s, r.id)} />
+        <T style={{ textDecorationLine: 'underline' }}>{isFavourite(s, r.id) ? 'In your favourites' : 'Add to favourites'}</T></TouchableOpacity>
       <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients for {householdLabel(s)}</H>
       {Object.entries(r.ing).map(([id, q]) => <View key={id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderColor: t.line }}>
         <T>{INGREDIENTS[id].name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: INGREDIENTS[id].unit })}</T></View>)}
@@ -634,7 +648,7 @@ function Main() {
             <T size={13.5}>{ent.daysLeft} {ent.daysLeft === 1 ? 'day' : 'days'} left in your free month. Subscribe in Settings to keep going.</T></TouchableOpacity>}
           {ent.kind === 'past_due' && <TouchableOpacity onPress={() => setTab('settings')} style={{ backgroundColor: theme.badSoft, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 }}>
             <T size={13.5} color={theme.bad}>Your last payment didn't go through. Update your card in Settings.</T></TouchableOpacity>}
-          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} cyc={cyc} />}
+          {tab === 'plan' && <PlanScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} regenerate={regenerate} day={day} setDay={setDay} narrow={narrow} cyc={cyc} toast={toast} />}
           {tab === 'list' && <ListScreen data={data} update={update} priceFeed={priceFeed} openSheet={setSheet} toast={toast} />}
           {tab === 'fitness' && <FitnessScreen data={data} update={update} regenerate={regenerate} cycle={cycle} setCycle={setCycle} />}
           {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={doSignOut} ent={ent} billing={billing} />}
