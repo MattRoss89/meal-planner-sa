@@ -70,6 +70,14 @@ describe('cook from what you have', () => {
   });
 });
 
+test('quickest first, and the time filter drops slower meals', () => {
+  const have = ['eggs', 'onion', 'tomato', 'tomato_can', 'green_pepper', 'spinach', 'cheese', 'bread', 'milk', 'butter', 'potato', 'rice', 'mince'];
+  const res = C.cookFromPantry(have, {});
+  for (let i = 1; i < res.ready.length; i++) assert.ok(res.ready[i - 1].recipe.mins <= res.ready[i].recipe.mins);
+  const quick = C.cookFromPantry(have, {}, null, null, 20);
+  for (const e of [...quick.ready, ...quick.almost, ...quick.close]) assert.ok(e.recipe.mins <= 20, e.recipe.name);
+});
+
 describe('use up the pantry', () => {
   test('mergeSettings keeps only real, non-staple pantry ids', () => {
     const s = C.mergeSettings({ pantry: ['eggs', 'eggs', 'oil', 'unicorn'], useUpPantry: 1 });

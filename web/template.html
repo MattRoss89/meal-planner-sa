@@ -109,6 +109,11 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .portion{color:var(--oil)}
 .need{color:var(--oil)}
 .meal.cook{grid-template-columns:1fr auto}
+.cookhave li{display:grid!important;grid-template-columns:1fr auto 72px;gap:10px}
+.cookhave .st{text-align:right;font-size:13px}
+.cookhave li span:first-child{color:var(--ink)}
+.cookhave .st.need{color:var(--oil)}
+.cooksteps li{font-size:16px;line-height:1.5}
 .opt[hidden],.pan-group[hidden]{display:none}
 .meal-act{display:flex;gap:4px;font-size:13.5px;align-items:center}
 .meal-act button{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
@@ -409,24 +414,25 @@ function renderFitness(){
   return h;
 }
 
-const COOK_GROUPS=[['ready','Ready to cook','Everything is in your kitchen.'],['almost','One or two things to buy','Short of a little. Prices are at your chosen store.'],['close','Worth a quick shop','Most of it is in. A few things to pick up.']];
+const COOK_GROUPS=[['ready','Cook it now','Everything is in your kitchen. Quickest first.'],['almost','Missing one or two things','Swap them for something similar, or pick them up on the way.'],['close','Worth a quick shop','Most of it is in.']];
 const COOK_SHOW={ready:12,almost:8,close:6};
 function renderCook(){
-  const s=state.settings,have=new Set(s.pantry);
-  let h=sec("What's in your kitchen",'',`<p class="para" style="margin-top:0">Tick what you have. Oil, flour, spices, stock cubes and sauces are taken as given.</p>
+  const s=state.settings,have=new Set(s.pantry),mins=state.cookMins||0;
+  let h=sec("What's in your kitchen",'',`<p class="para" style="margin-top:0">Tick what you have and see what you can cook right now. Oil, flour, spices, stock cubes and sauces are taken as given.</p>
     <div class="field"><label for="cook-q">Find an ingredient</label><input id="cook-q" type="search" autocomplete="off" value="${esc(state.cookQ||'')}" placeholder="Eggs, rice, onion…"></div>
     <p class="soft" id="cook-none" hidden>No ingredient matches that. Try a shorter word.</p>`+
     pantryChoices().map(g=>`<div class="field pan-group" style="margin-top:22px"><span class="lbl">${esc(g.aisle)}</span><div class="opts">${g.items.map(i=>`<button class="opt" data-pan="${i.id}" data-name="${esc(i.name.toLowerCase())}" aria-pressed="${have.has(i.id)}">${esc(i.name)}</button>`).join('')}</div></div>`).join('')+
-    (s.pantry.length?`<div class="actions" style="margin-top:18px"><span class="soft">${s.pantry.length} ticked</span><button class="link soft" data-act="panclear">Untick everything</button></div>`:'')+
-    `<div class="toggle" style="margin-top:14px"><label for="f-useup">Plan my week around these<small>New weeks lean on what you have, and those items come off your shopping list total.</small></label><input class="sw" type="checkbox" id="f-useup" data-set="useUpPantry" ${s.useUpPantry?'checked':''}></div>`);
-  if(!s.pantry.length)return h+sec('What you can make','',`<p class="para" style="margin-top:0">Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</p>`);
-  const res=cookFromPantry(s.pantry,s,priceFeed,state.overrides);
-  if(!res.ready.length&&!res.almost.length&&!res.close.length)return h+sec('What you can make','',`<p class="para" style="margin-top:0">Nothing fits yet. Add a few more things, like an onion, eggs or a tin of tomatoes.</p>`);
+    (s.pantry.length?`<div class="actions" style="margin-top:18px"><span class="soft">${s.pantry.length} ticked</span><button class="link soft" data-act="panclear">Untick everything</button></div>`:''));
+  const res=s.pantry.length?cookFromPantry(s.pantry,s,priceFeed,state.overrides,mins):{ready:[],almost:[],close:[]};
+  const found=res.ready.length+res.almost.length+res.close.length;
+  h+=sec('What you can make','',`<div class="field"><span class="lbl">Ready in</span><div class="opts">${COOK_TIMES.map(m=>`<button class="opt" data-mins="${m}" aria-pressed="${mins===m}">${m?m+' min or less':'Any time'}</button>`).join('')}</div></div>`+
+    (!s.pantry.length?`<p class="para">Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</p>`:!found?`<p class="para">${mins?`Nothing in ${mins} minutes or less. Try a longer time, or tick a few more things.`:'Nothing fits yet. Tick a few more things, like an onion, eggs or a tin of tomatoes.'}</p>`:''));
   for(const [k,title,lead] of COOK_GROUPS){
     const all=res[k];if(!all.length)continue;
     const shown=state.cookMore&&state.cookMore[k]?all:all.slice(0,COOK_SHOW[k]);
-    h+=sec(`${title} (${all.length})`,'',`<p class="para" style="margin-top:0">${lead}</p><div class="meals">`+shown.map(e=>`<div class="meal cook"><button class="meal-main" data-recipe="${e.recipe.id}"><span class="thumb" aria-hidden="true">${plateSVG(e.recipe,PLATE_THEME,64)}</span><span class="meal-name">${e.favourite?'♥ ':''}${esc(e.recipe.name)}</span><span class="meal-meta">${cap1(e.recipe.meal)} &nbsp;•&nbsp; ${e.recipe.mins} min${e.missing.length?`<br><span class="need">Need ${e.missing.map(m=>`${esc(m.name.toLowerCase())} (${money2(m.cost)})`).join(', ')}</span>`:''}</span></button><span class="meal-act"><button class="link" data-place="${e.recipe.id}" aria-label="Add ${esc(e.recipe.name)} to the week">Add to week</button></span></div>`).join('')+`</div>`+(all.length>shown.length?`<div class="actions"><button class="link" data-more="${k}">Show all ${all.length}</button></div>`:''));
+    h+=sec(`${title} (${all.length})`,'',`<p class="para" style="margin-top:0">${lead}</p><div class="meals">`+shown.map(e=>`<div class="meal cook"><button class="meal-main" data-cook="${e.recipe.id}" aria-label="Cook ${esc(e.recipe.name)}"><span class="thumb" aria-hidden="true">${plateSVG(e.recipe,PLATE_THEME,64)}</span><span class="meal-name">${e.favourite?'♥ ':''}${esc(e.recipe.name)}</span><span class="meal-meta">${e.recipe.mins} min &nbsp;•&nbsp; ${cap1(e.recipe.meal)}${e.missing.length?`<br><span class="need">Need ${e.missing.map(m=>esc(m.name.toLowerCase())).join(', ')}</span>`:''}</span></button><span class="meal-act"><button class="link" data-cook="${e.recipe.id}" tabindex="-1" aria-hidden="true">Cook</button></span></div>`).join('')+`</div>`+(all.length>shown.length?`<div class="actions"><button class="link" data-more="${k}">Show all ${all.length}</button></div>`:''));
   }
+  h+=sec('Planning ahead','',`<div class="toggle" style="padding-top:0"><label for="f-useup">Plan my week around these<small>New weeks lean on what you have, and those items come off your shopping list total.</small></label><input class="sw" type="checkbox" id="f-useup" data-set="useUpPantry" ${s.useUpPantry?'checked':''}></div>`);
   return h;
 }
 function filterPantry(){
@@ -447,6 +453,11 @@ function renderSheet(){
     const cw=cyc();const alts=alternatives(state.plan,+d,slot,state.settings,priceFeed,state.overrides,cw);
     kicker='Swap';
     inner=`<h2 id="sh-t">${DAYS[d]} ${slot}</h2><p class="sub">Ordered by what each does to this week's total.</p>`+alts.map(a=>{const dl=Math.round(a.total-cur);return `<button class="alt" data-pick="${a.recipe.id}"><span><span class="an">${a.favourite?'♥ ':''}${esc(a.recipe.name)}</span><small>${a.recipe.mins} min &nbsp;•&nbsp; ${a.nutrition.protein} g protein &nbsp;•&nbsp; ${a.nutrition.kcal} kcal${cw&&['period','recovery'].includes(cw[+d].phase)?` &nbsp;•&nbsp; ${a.nutrition.iron} mg iron`:''}</small></span><span class="delta ${dl>0?'up':dl<0?'down':''}">${dl===0?'Same cost':(dl>0?'+':'−')+money(Math.abs(dl))}</span></button>`}).join('');
+  }else if(sheet.type==='cooknow'){
+    const r=recipeById(sheet.id),n=recipeNutrition(r),s=state.settings,hh=eaters(s),have=new Set(s.pantry);
+    const need=Object.keys(r.ing).filter(id=>!INGREDIENTS[id].staple&&!have.has(id));
+    kicker='Cook now';
+    inner=`<div class="dish">${plateSVG(r,PLATE_THEME,220)}</div><h2 id="sh-t">${esc(r.name)}</h2><p class="sub">${r.mins} minutes, for ${householdLabel(s)} &nbsp;•&nbsp; ${n.protein} g protein, ${n.kcal} kcal per person</p><p class="${need.length?'need':''}" style="margin:6px 0 0">${need.length?'You need '+need.map(id=>esc(INGREDIENTS[id].name.replace(/ \(.*\)/,'').toLowerCase())).join(' and ')+'.':'You have everything for this.'}</p><h3>Ingredients</h3><ul class="ing cookhave">`+Object.entries(r.ing).map(([id,q])=>{const ing=INGREDIENTS[id],st=ing.staple?'Cupboard':have.has(id)?'✓ Have':'Need';return `<li><span>${esc(ing.name.replace(/ \(.*\)/,''))}</span><span>${formatQty({qty:q*hh/4,unit:ing.unit})}</span><span class="st ${st==='Need'?'need':'soft'}">${st}</span></li>`}).join('')+`</ul><h3>Method</h3><ol class="steps cooksteps">`+r.steps.map(x=>`<li><span>${esc(x)}</span></li>`).join('')+`</ol><div class="actions"><button class="fav-btn link" data-fav="${r.id}" aria-pressed="${isFavourite(s,r.id)}">${HEART}<span>${isFavourite(s,r.id)?'In your favourites':'Add to favourites'}</span></button><button class="link" data-place="${r.id}">Add to the week instead</button></div>`;
   }else if(sheet.type==='place'){
     const r=recipeById(sheet.id),slot=r.meal,s=state.settings,cur=currentList().total,cw=cyc();
     kicker='Add to the week';
@@ -481,7 +492,7 @@ function render(){
 // ---------------- Events ----------------
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal],[data-kid],[data-fav],[data-pan],[data-place],[data-put],[data-more]');
+  const t=e.target.closest('[data-tab],[data-act],[data-store],[data-lock],[data-swap],[data-recipe],[data-chip],[data-meal],[data-pick],[data-close],[data-day],[data-step],[data-goal],[data-kid],[data-fav],[data-pan],[data-place],[data-put],[data-more],[data-cook],[data-mins]');
   if(!t)return;
   if(t.dataset.close){if(t.classList.contains('sheet-bg')&&e.target!==t)return;closeSheet();return}
   const s=state.settings;
@@ -494,7 +505,9 @@ document.addEventListener('click',async e=>{
   if(t.dataset.kid){const g=t.dataset.kid;s.kids[g]=Math.min(8,Math.max(0,(s.kids[g]||0)+ +t.dataset.n));save();render();return}
   if(t.dataset.lock){const k=t.dataset.lock;if(state.locked[k])delete state.locked[k];else{const [d,m]=k.split(':');state.locked[k]=state.plan.days[+d][m]}save();render();return}
   if(t.dataset.pan){const id=t.dataset.pan,i=s.pantry.indexOf(id);if(i>=0)s.pantry.splice(i,1);else s.pantry.push(id);save();render();document.querySelector(`[data-pan="${id}"]`)?.focus();return}
-  if(t.dataset.place){openSheet({type:'place',id:t.dataset.place});return}
+  if(t.dataset.cook){openSheet({type:'cooknow',id:t.dataset.cook});return}
+  if(t.dataset.mins!==undefined){state.cookMins=+t.dataset.mins;render();return}
+  if(t.dataset.place){sheet={type:'place',id:t.dataset.place};renderSheet();return}
   if(t.dataset.put){const d=+t.dataset.put,r=recipeById(sheet.id);state.plan=placeRecipe(state.plan,d,r.id,s,cyc());state.locked[`${d}:${r.meal}`]=r.id;sheet=null;save();render();toast(`Added to ${DAYS[d]} and kept`);return}
   if(t.dataset.more){state.cookMore={...(state.cookMore||{}),[t.dataset.more]:true};render();return}
   if(t.dataset.swap){openSheet({type:'swap',key:t.dataset.swap});return}

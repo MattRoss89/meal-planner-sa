@@ -16,7 +16,7 @@ import {
   cycleWeek, planTargets, planInputsKey, validLocks, isFavourite, toggleFavourite, CYCLE_LABELS, KID_GROUPS, eaters, householdLabel, DEFAULT_CYCLE, IRON_TARGET_MG, LUTEAL_TOPUP_KCAL,
   mergeSettings, fitnessTargets, priceOf, buildList, formatQty, listAsText,
   recipeById, recipeNutrition, dayNutrition, generatePlan, alternatives, applySwap, storeSearchUrl,
-  pantryChoices, cookFromPantry, placeRecipe,
+  pantryChoices, cookFromPantry, placeRecipe, COOK_TIMES,
 } from './src/core';
 import {
   firebaseReady, watchUser, signInWithGoogleWeb, signInWithGoogleIdToken, signOut,
@@ -414,11 +414,11 @@ function SettingsScreen({ data, update, priceFeed, user, onSignOut, ent, billing
   </View>;
 }
 
-// ---------- cook from what you have ----------
+// ---------- cook from what you have (right now) ----------
 const COOK_GROUPS = [
-  ['ready', 'Ready to cook', 'Everything is in your kitchen.'],
-  ['almost', 'One or two things to buy', 'Short of a little. Prices are at your chosen store.'],
-  ['close', 'Worth a quick shop', 'Most of it is in. A few things to pick up.'],
+  ['ready', 'Cook it now', 'Everything is in your kitchen. Quickest first.'],
+  ['almost', 'Missing one or two things', 'Swap them for something similar, or pick them up on the way.'],
+  ['close', 'Worth a quick shop', 'Most of it is in.'],
 ];
 const COOK_SHOW = { ready: 12, almost: 8, close: 6 };
 
@@ -426,15 +426,16 @@ function CookScreen({ data, update, priceFeed, openSheet }) {
   const t = useT();
   const s = data.settings;
   const [q, setQ] = useState('');
+  const [mins, setMins] = useState(0);
   const [more, setMore] = useState({});
   const have = new Set(s.pantry);
   const toggle = id => update(d => { const a = d.settings.pantry; const i = a.indexOf(id); if (i >= 0) a.splice(i, 1); else a.push(id); });
   const query = q.trim().toLowerCase();
   const groups = pantryChoices().map(g => ({ ...g, items: query ? g.items.filter(i => i.name.toLowerCase().includes(query)) : g.items })).filter(g => g.items.length);
-  const res = cookFromPantry(s.pantry, s, priceFeed, data.overrides);
+  const res = cookFromPantry(s.pantry, s, priceFeed, data.overrides, mins);
   const found = res.ready.length + res.almost.length + res.close.length;
   return <View>
-    <Section title="What's in your kitchen" lead="Tick what you have. Oil, flour, spices, stock cubes and sauces are taken as given.">
+    <Section title="What's in your kitchen" lead="Tick what you have and see what you can cook right now. Oil, flour, spices, stock cubes and sauces are taken as given.">
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderColor: t.ink }}>
         <Icon name="search" size={18} />
         <TextInput value={q} onChangeText={setQ} placeholder="Find an ingredient" placeholderTextColor={t.muted} accessibilityLabel="Find an ingredient"
@@ -447,30 +448,36 @@ function CookScreen({ data, update, priceFeed, openSheet }) {
         <T muted size={13.5}>{s.pantry.length} ticked</T>
         <Btn title="Untick everything" kind="ghost" onPress={() => update(d => { d.settings.pantry = []; })} />
       </View>}
+    </Section>
+    <Section title="What you can make">
+      <Field label="Ready in"><Chips>{COOK_TIMES.map(m => <Chip key={m} label={m ? `${m} min or less` : 'Any time'} on={mins === m} onPress={() => setMins(m)} />)}</Chips></Field>
+      {s.pantry.length === 0 ? <T muted>Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</T>
+        : found === 0 ? <T muted>{mins ? `Nothing in ${mins} minutes or less. Try a longer time, or tick a few more things.` : 'Nothing fits yet. Tick a few more things, like an onion, eggs or a tin of tomatoes.'}</T> : null}
+    </Section>
+    {found > 0 && COOK_GROUPS.map(([k, title, lead]) => res[k].length === 0 ? null : <Section key={k} title={`${title} (${res[k].length})`} lead={lead}>
+      <View style={{ borderTopWidth: 1, borderColor: t.line }}>
+        {res[k].slice(0, more[k] ? undefined : COOK_SHOW[k]).map(e => <TouchableOpacity key={e.recipe.id} accessibilityRole="button" accessibilityLabel={`Cook ${e.recipe.name}`}
+          onPress={() => openSheet({ type: 'cooknow', id: e.recipe.id })}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line }}>
+          <Plate recipe={e.recipe} size={52} theme={t} />
+          <View style={{ flex: 1, gap: 3 }}>
+            <H size={18}>{e.favourite ? '♥ ' : ''}{e.recipe.name}</H>
+            <T muted size={13}>{e.recipe.mins} min  •  {cap(e.recipe.meal)}</T>
+            {e.missing.length > 0 && <T size={13} color={t.train}>Need {e.missing.map(m => m.name.toLowerCase()).join(', ')}</T>}
+          </View>
+          <T size={13.5} style={{ textDecorationLine: 'underline' }}>Cook</T>
+        </TouchableOpacity>)}
+      </View>
+      {res[k].length > COOK_SHOW[k] && !more[k] && <Btn title={`Show all ${res[k].length}`} onPress={() => setMore(m => ({ ...m, [k]: true }))} />}
+    </Section>)}
+    <Section title="Planning ahead">
       <SwitchRow title="Plan my week around these" sub="New weeks lean on what you have, and those items come off your shopping list total." value={s.useUpPantry} onChange={v => update(d => { d.settings.useUpPantry = v; })} />
     </Section>
-    {s.pantry.length === 0 ? <Section title="What you can make"><T muted>Tick a few things you have, like eggs, onions or rice, and Tafel shows what you can cook with them.</T></Section>
-      : found === 0 ? <Section title="What you can make"><T muted>Nothing fits yet. Add a few more things, like an onion, eggs or a tin of tomatoes.</T></Section>
-      : COOK_GROUPS.map(([k, title, lead]) => res[k].length === 0 ? null : <Section key={k} title={`${title} (${res[k].length})`} lead={lead}>
-        <View style={{ borderTopWidth: 1, borderColor: t.line }}>
-          {res[k].slice(0, more[k] ? undefined : COOK_SHOW[k]).map(e => <View key={e.recipe.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line }}>
-            <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: e.recipe.id })} accessibilityLabel={`Open recipe: ${e.recipe.name}`}><Plate recipe={e.recipe} size={52} theme={t} /></TouchableOpacity>
-            <View style={{ flex: 1, gap: 3 }}>
-              <TouchableOpacity onPress={() => openSheet({ type: 'recipe', id: e.recipe.id })}><H size={18}>{e.favourite ? '♥ ' : ''}{e.recipe.name}</H></TouchableOpacity>
-              <T muted size={13}>{cap(e.recipe.meal)}  •  {e.recipe.mins} min</T>
-              {e.missing.length > 0 && <T size={13} color={t.train}>Need {e.missing.map(m => `${m.name.toLowerCase()} (${money2(m.cost)})`).join(', ')}</T>}
-            </View>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Add ${e.recipe.name} to the week`} onPress={() => openSheet({ type: 'place', id: e.recipe.id })}
-              style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}><T size={13.5} style={{ textDecorationLine: 'underline' }}>Add to week</T></TouchableOpacity>
-          </View>)}
-        </View>
-        {res[k].length > COOK_SHOW[k] && !more[k] && <Btn title={`Show all ${res[k].length}`} onPress={() => setMore(m => ({ ...m, [k]: true }))} />}
-      </Section>)}
   </View>;
 }
 
 // ---------- sheet ----------
-function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
+function Sheet({ sheet, data, update, priceFeed, close, toast, cyc, openSheet }) {
   const t = useT();
   const { width } = useWindowDimensions();
   if (!sheet) return null;
@@ -489,6 +496,26 @@ function Sheet({ sheet, data, update, priceFeed, close, toast, cyc }) {
           <T size={13.5} font="semi" color={dl > 0 ? t.bad : dl < 0 ? t.accent : t.muted}>{dl === 0 ? 'Same cost' : (dl > 0 ? '+' : '−') + money(Math.abs(dl))}</T>
         </TouchableOpacity>;
       })}</>;
+  } else if (sheet.type === 'cooknow') {
+    const r = recipeById(sheet.id), n = recipeNutrition(r), hh = eaters(s), have = new Set(s.pantry);
+    const need = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple && !have.has(id));
+    body = <><View style={{ backgroundColor: t.accentSoft, alignItems: 'center', paddingVertical: 22, marginHorizontal: -20, marginBottom: 18, borderBottomWidth: 1, borderColor: t.rule }}><Plate recipe={r} size={Math.min(220, width * 0.55)} theme={t} /></View>
+      <H size={24}>{r.name}</H>
+      <T muted size={14}>{r.mins} minutes, for {householdLabel(s)}. Per person: {n.protein} g protein, {n.kcal} kcal.</T>
+      <T size={14} color={need.length ? t.train : t.ink} style={{ marginTop: 8 }}>{need.length ? `You need ${need.map(id => INGREDIENTS[id].name.replace(/ \(.*\)/, '').toLowerCase()).join(' and ')}.` : 'You have everything for this.'}</T>
+      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Ingredients</H>
+      {Object.entries(r.ing).map(([id, q]) => { const ing = INGREDIENTS[id]; const st = ing.staple ? 'Cupboard' : have.has(id) ? 'Have' : 'Need';
+        return <View key={id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderColor: t.line }}>
+          <T style={{ flex: 1 }}>{ing.name.replace(/ \(.*\)/, '')}</T><T muted>{formatQty({ qty: q * hh / 4, unit: ing.unit })}</T>
+          <T size={12.5} font="semi" color={st === 'Need' ? t.train : t.muted} style={{ width: 66, textAlign: 'right' }}>{st === 'Have' ? '✓ Have' : st}</T></View>; })}
+      <H size={15} style={{ marginTop: 18, marginBottom: 8 }}>Method</H>
+      {r.steps.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+        <View style={{ width: 26, height: 26, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}><T size={13} font="bold" color={t.accent}>{i + 1}</T></View>
+        <T size={16} style={{ flex: 1, lineHeight: 23 }}>{x}</T></View>)}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 8 }}>
+        <Btn title={isFavourite(s, r.id) ? 'In your favourites' : 'Add to favourites'} onPress={() => { update(x => { x.settings.favourites = toggleFavourite(x.settings, r.id); }); }} />
+        <Btn title="Add to the week instead" onPress={() => openSheet && openSheet({ type: 'place', id: r.id })} />
+      </View></>;
   } else if (sheet.type === 'place') {
     const r = recipeById(sheet.id), slot = r.meal;
     const cur = buildList(data.plan, s, priceFeed, data.overrides).total;
@@ -728,7 +755,7 @@ function Main() {
           {tab === 'settings' && <SettingsScreen data={data} update={update} priceFeed={priceFeed} user={user} onSignOut={doSignOut} ent={ent} billing={billing} />}
         </ScrollView>
         {!wide && <TabBar tab={tab} setTab={setTab} />}
-        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} cyc={cyc} />
+        <Sheet sheet={sheet} data={data} update={update} priceFeed={priceFeed} close={() => setSheet(null)} toast={toast} cyc={cyc} openSheet={setSheet} />
         {msg && <View pointerEvents="none" accessibilityLiveRegion="polite" style={[{ position: 'absolute', bottom: wide ? 32 : 96, alignSelf: 'center', backgroundColor: theme.ink, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 0 }, shadow]}>
           <T font="semi" size={14} color={theme.bg}>{msg}</T></View>}
       </>}

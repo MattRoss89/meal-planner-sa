@@ -627,19 +627,21 @@ export function pantryChoices() {
 }
 
 export const COOK_LIMIT = { almost: 2, close: 4 }; // most missing ingredients per group
+export const COOK_TIMES = [0, 20, 30, 45]; // "ready in" filters, minutes (0 = any)
 
 // Recipes ranked by what the household already has.
 //   ready:  nothing to buy
 //   almost: one or two things to buy, with what they'd cost at the chosen store
 //   close:  three or four to buy, but at least half the ingredients are in
 // Diet rules always apply; favourites come first within a group.
-export function cookFromPantry(have, settings, priceFeed, overrides) {
+export function cookFromPantry(have, settings, priceFeed, overrides, maxMins) {
   const s = mergeSettings(settings);
   const owned = new Set(have || []);
   const out = { ready: [], almost: [], close: [] };
   if (!owned.size) return out;
   for (const r of RECIPES) {
     if (!allowedRecipe(r, s.diets)) continue;
+    if (maxMins && r.mins > maxMins) continue;
     const needed = Object.keys(r.ing).filter(id => !INGREDIENTS[id].staple);
     const got = needed.filter(id => owned.has(id));
     if (!got.length) continue;
@@ -657,8 +659,9 @@ export function cookFromPantry(have, settings, priceFeed, overrides) {
     else if (missing.length <= COOK_LIMIT.close && entry.coverage >= 0.5) out.close.push(entry);
   }
   const fav = (a, b) => (b.favourite - a.favourite);
-  out.ready.sort((a, b) => fav(a, b) || b.have.length - a.have.length || a.recipe.mins - b.recipe.mins);
-  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.missingCost - b.missingCost);
+  // Cooking now: within each group the quickest meals lead.
+  out.ready.sort((a, b) => fav(a, b) || a.recipe.mins - b.recipe.mins || b.have.length - a.have.length);
+  out.almost.sort((a, b) => fav(a, b) || a.missing.length - b.missing.length || a.recipe.mins - b.recipe.mins);
   out.close.sort((a, b) => fav(a, b) || b.coverage - a.coverage || a.missingCost - b.missingCost);
   return out;
 }
