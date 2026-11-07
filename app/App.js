@@ -100,7 +100,7 @@ function WeekStrip({ day, setDay, plan, settings, targets, cyc }) {
       const short = targets && dayNutrition(plan.days[i]).protein < targets.days[i].protein - 5;
       return <TouchableOpacity key={nm} onPress={() => setDay(i)} accessibilityRole="button" accessibilityState={{ selected: sel }}
         accessibilityLabel={`${nm} ${dayDate(i).getDate()}${train ? ', training day' : ''}`}
-        style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 0, backgroundColor: sel ? t.accentSoft : 'transparent', borderLeftWidth: i ? 1 : 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.line }}>
+        style={{ flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 8, borderRadius: 0, backgroundColor: sel ? t.accentSoft : 'transparent', borderLeftWidth: i ? 1 : 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.line, ...(sel ? { borderBottomWidth: 3, borderBottomColor: t.ink, paddingBottom: 6 } : null) }}>
         <T size={11} color={sel ? t.ink : t.muted} style={{ letterSpacing: 1.5, textTransform: 'uppercase' }}>{nm}</T>
         <H size={20}>{dayDate(i).getDate()}</H>
         <View style={{ flexDirection: 'row', gap: 3, marginTop: 3, height: 6 }}>
@@ -162,11 +162,11 @@ function PlanScreen({ data, update, priceFeed, openSheet, regenerate, day, setDa
             </TouchableOpacity>
             {r && <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: isFavourite(s, r.id) }} accessibilityLabel={isFavourite(s, r.id) ? `Remove ${r.name} from favourites` : `Add ${r.name} to favourites`}
               onPress={() => { const fav = isFavourite(s, r.id); update(x => { x.settings.favourites = toggleFavourite(x.settings, r.id); }); toast(fav ? 'Removed from favourites' : 'Added to favourites. It will come up more often'); }}
-              style={{ paddingVertical: 6, paddingHorizontal: 4, marginRight: 6 }}><Icon name="heart" size={18} color={isFavourite(s, r.id) ? t.cycle : t.muted} filled={isFavourite(s, r.id)} /></TouchableOpacity>}
+              style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}><Icon name="heart" size={18} color={isFavourite(s, r.id) ? t.cycle : t.muted} filled={isFavourite(s, r.id)} /></TouchableOpacity>}
             {r && <TouchableOpacity accessibilityLabel={lk ? `Unlock ${r.name}` : `Keep ${r.name} when re-planning`} onPress={() => update(x => { if (lk) delete x.locked[key]; else x.locked[key] = d[m]; })}
-              style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
+              accessibilityRole="button" accessibilityState={{ selected: !!lk }} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
               <T size={13.5} color={lk ? t.train : t.ink} style={{ textDecorationLine: 'underline' }}>{lk ? 'Kept' : 'Keep'}</T></TouchableOpacity>}
-            {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} onPress={() => openSheet({ type: 'swap', key })} style={{ paddingVertical: 6, paddingHorizontal: 4, marginLeft: 8 }}><T size={13.5} style={{ textDecorationLine: 'underline' }}>Swap</T></TouchableOpacity>}
+            {r && <TouchableOpacity accessibilityLabel={`Swap ${m}`} accessibilityRole="button" onPress={() => openSheet({ type: 'swap', key })} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}><T size={13.5} style={{ textDecorationLine: 'underline' }}>Swap</T></TouchableOpacity>}
           </View>
         </View>;
       })}
@@ -199,7 +199,7 @@ function ListScreen({ data, update, priceFeed, openSheet, toast }) {
       {Object.keys(STORES).map(k => {
         const on = s.store === k;
         return <TouchableOpacity key={k} onPress={() => update(d => { d.settings.store = k; })} accessibilityState={{ selected: on }}
-          style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: 1, borderColor: t.line, backgroundColor: on ? t.accentSoft : 'transparent', borderRadius: 0, paddingVertical: 10, paddingHorizontal: 14, marginRight: -7 }}>
+          style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: on ? 2 : 1, borderColor: on ? t.ink : t.line, backgroundColor: on ? t.accentSoft : 'transparent', borderRadius: 0, paddingVertical: on ? 9 : 10, paddingHorizontal: on ? 13 : 14, marginRight: -7, minHeight: 44 }}>
           <T size={13.5}>{shortStore(k)}</T><T size={13.5} color={t.muted}>{money(list.byStore[k])}</T>
         </TouchableOpacity>;
       })}
@@ -271,7 +271,7 @@ function SwitchRow({ title, sub, value, onChange, big }) {
   const t = useT();
   return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
     <View style={{ flex: 1, gap: 2 }}>{big ? <H>{title}</H> : <T font="semi">{title}</T>}{sub && <T muted size={13}>{sub}</T>}</View>
-    <Switch value={value} onValueChange={onChange} trackColor={{ true: t.accent, false: t.line }} thumbColor="#fff" ios_backgroundColor={t.line} accessibilityLabel={title} />
+    <Switch value={value} onValueChange={onChange} trackColor={{ true: t.accent, false: t.control }} thumbColor="#fff" ios_backgroundColor={t.control} accessibilityLabel={title} />
   </View>;
 }
 

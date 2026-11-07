@@ -5,13 +5,13 @@ import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
 // Tafel palette: paper ground, olive ink, sage label colour, amber for training, brick for over budget.
 export const LIGHT = {
-  bg: '#fbf9f3', surface: '#fbf9f3', sunk: '#f2efe6', ink: '#454b39', muted: '#7d8172', line: '#dedbd0', rule: '#454b39',
+  bg: '#fbf9f3', surface: '#fbf9f3', sunk: '#f2efe6', ink: '#454b39', muted: '#62675a', line: '#dedbd0', rule: '#454b39', control: '#858979',
   accent: '#454b39', accentInk: '#fbf9f3', accentSoft: '#dfe7d2',
-  train: '#a87b2c', trainSoft: '#f3ead8', bad: '#9a4a35', badSoft: '#f3e2dc', cycle: '#8e4f63', cycleSoft: '#f3e4e8',
+  train: '#85601f', trainSoft: '#f3ead8', bad: '#9a4a35', badSoft: '#f3e2dc', cycle: '#8e4f63', cycleSoft: '#f3e4e8',
   paper: '#dfe7d2', paperInk: '#3d4433', paperLine: '#a9b39a', paperMuted: '#5d6651',
 };
 export const DARK = {
-  bg: '#1d201a', surface: '#1d201a', sunk: '#252920', ink: '#e9e6db', muted: '#a3a596', line: '#353a2f', rule: '#e9e6db',
+  bg: '#1d201a', surface: '#1d201a', sunk: '#252920', ink: '#e9e6db', muted: '#a3a596', line: '#353a2f', rule: '#e9e6db', control: '#73786a',
   accent: '#e9e6db', accentInk: '#1d201a', accentSoft: '#323a2b',
   train: '#d6a956', trainSoft: '#2f2a1e', bad: '#e08a73', badSoft: '#3a231d', cycle: '#e3a2b4', cycleSoft: '#3a262c',
   paper: '#323a2b', paperInk: '#e4ead9', paperLine: '#56604a', paperMuted: '#b7bfa9',
@@ -69,7 +69,7 @@ export function Btn({ title, icon, onPress, kind = 'default', style }) {
   const t = useT();
   const primary = kind === 'primary', ghost = kind === 'ghost';
   const fg = primary ? t.accentInk : ghost ? t.muted : t.ink;
-  if (!primary) return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[{ paddingVertical: 12 }, style]}>
+  if (!primary) return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[{ paddingVertical: 12, minHeight: 44, justifyContent: 'center' }, style]}>
     <T color={fg} style={{ textDecorationLine: 'underline' }}>{title}</T></TouchableOpacity>;
   return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[{
     alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 22, backgroundColor: t.ink,
@@ -81,9 +81,9 @@ export function Btn({ title, icon, onPress, kind = 'default', style }) {
 export function Chip({ label, on, onPress }) {
   const t = useT();
   return <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={{
-    borderWidth: 1, borderColor: t.line, backgroundColor: on ? t.accentSoft : 'transparent', paddingVertical: 10, paddingHorizontal: 14, marginRight: -1, marginBottom: -1,
+    borderWidth: on ? 2 : 1, borderColor: on ? t.ink : t.line, backgroundColor: on ? t.accentSoft : 'transparent', paddingVertical: on ? 9 : 10, paddingHorizontal: on ? 13 : 14, marginRight: -1, marginBottom: -1, minHeight: 44, justifyContent: 'center',
   }}>
-    <T size={14}>{label}</T>
+    <T size={14}>{on ? '✓ ' : ''}{label}</T>
   </TouchableOpacity>;
 }
 export function Chips({ children }) { return <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{children}</View>; }

@@ -12,8 +12,8 @@
 /* Tafel: an apothecary-quiet planner. Paper ground, olive ink, sage label colour, amber for training.
    One grotesque at regular weight; structure from full-width hairlines, never cards or shadows. */
 :root{
-  --paper:#fbf9f3; --ink:#454b39; --soft:#7d8172; --rule:#454b39; --hair:#dedbd0;
-  --sage:#dfe7d2; --sage-ink:#3d4433; --oil:#a87b2c; --brick:#9a4a35; --rose:#8e4f63;
+  --paper:#fbf9f3; --ink:#454b39; --soft:#62675a; --rule:#454b39; --hair:#dedbd0;
+  --sage:#dfe7d2; --sage-ink:#3d4433; --oil:#85601f; --brick:#9a4a35; --rose:#8e4f63;
   --font:"Hanken Grotesk","Helvetica Neue",Helvetica,Arial,sans-serif;
   --serif:"Bodoni Moda","Bodoni 72",Didot,Georgia,serif;
   color-scheme:light;
@@ -45,7 +45,7 @@ h1,h2,h3{font-weight:400;margin:0;text-wrap:balance}
 .bar .l{justify-self:start}.bar .r{justify-self:end}
 .tabs{border-bottom:1px solid var(--hair)}
 .tabs-in{max-width:880px;margin:0 auto;display:flex;gap:28px;justify-content:center;padding:0 20px}
-.tab{padding:13px 0 11px;border-bottom:1px solid transparent;margin-bottom:-1px;color:var(--soft)}
+.tab{min-height:44px;padding:13px 0 11px;border-bottom:1px solid transparent;margin-bottom:-1px;color:var(--soft)}
 .tab[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
 main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .notice{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--sage);color:var(--sage-ink);text-align:center;font-size:12.5px;padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
@@ -81,7 +81,7 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .cyc-note .v{font-family:var(--serif);font-size:20px}
 .cyc-note .line i{background:var(--rose)}
 .rose{color:var(--rose)}
-.day[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink)}
+.day[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink);box-shadow:inset 0 -3px 0 var(--ink)}
 .day[aria-pressed="true"] .dn{color:var(--sage-ink)}
 .day-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:26px 0 4px}
 .day-title h3{font-size:28px;letter-spacing:-.01em}
@@ -104,11 +104,12 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .meal-name{font-size:19px;line-height:1.25}
 .meal-meta{color:var(--soft);font-size:13.5px}
 .portion{color:var(--oil)}
-.meal-act{display:flex;gap:16px;font-size:13.5px}
+.meal-act{display:flex;gap:4px;font-size:13.5px;align-items:center}
+.meal-act button{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 .meal-act button[aria-pressed="true"]{color:var(--oil)}
 .fav{color:var(--soft);display:inline-flex;align-items:center}.fav svg path{fill:none}
 .fav[aria-pressed="true"]{color:var(--rose)!important}.fav[aria-pressed="true"] svg path{fill:currentColor}
-.fav-btn{display:inline-flex;align-items:center;gap:8px;margin-top:10px}.fav-btn[aria-pressed="true"]{color:var(--rose)}.fav-btn[aria-pressed="true"] svg path{fill:currentColor}.fav-btn svg path{fill:none}
+.fav-btn{display:inline-flex;align-items:center;gap:8px;margin-top:10px;min-height:44px}.fav-btn[aria-pressed="true"]{color:var(--rose)}.fav-btn[aria-pressed="true"] svg path{fill:currentColor}.fav-btn svg path{fill:none}
 .favs{border-top:1px solid var(--hair)}.favr{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--hair)}
 .snacks{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:16px 0;border-bottom:1px solid var(--hair)}
 @media (max-width:600px){
@@ -128,7 +129,7 @@ main{max-width:880px;margin:0 auto;padding:0 20px 88px}
 .store{padding:12px 10px;border-left:1px solid var(--hair);text-align:left;display:grid;gap:2px}
 .store:first-child{border-left:0}
 .store .v{font-size:18px}
-.store[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink)}
+.store[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink);box-shadow:inset 0 -3px 0 var(--ink)}
 @media (max-width:600px){.stores{grid-template-columns:1fr 1fr}.store{border-left:0;border-top:1px solid var(--hair)}.store:nth-child(even){border-left:1px solid var(--hair)}.store:nth-child(-n+2){border-top:0}}
 
 /* Shopping label: a sage apothecary label holding the list */
@@ -177,12 +178,15 @@ select option:checked{background:var(--sage);color:var(--sage-ink)}
 .kid .stepper{width:150px;border-bottom:0}
 .opts{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--hair);border-left:1px solid var(--hair)}
 .opt{padding:10px 14px;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);font-size:14px}
-.opt[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink)}
+.opt[aria-pressed="true"]{background:var(--sage);color:var(--sage-ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.opt[aria-pressed="true"]::before{content:"✓ "}
+.opt{min-height:44px}
 .toggle{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:14px 0;border-bottom:1px solid var(--hair)}
 .toggle small{display:block;color:var(--soft);font-size:13px}
 .sw{appearance:none;width:40px;height:22px;border:1px solid var(--ink);position:relative;flex:none;margin:0;background:transparent}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;background:var(--ink);transition:transform .2s}
-.sw:checked{background:var(--sage)}
+.sw:checked{background:var(--ink)}
+.sw:checked::after{background:var(--paper)}
 .sw:checked::after{transform:translateX(18px)}
 .tr{display:grid;grid-template-columns:60px 1fr 90px;gap:16px;align-items:center;padding:6px 0;border-bottom:1px solid var(--hair)}
 .tr .k{text-align:right;color:var(--soft);font-size:13.5px}
@@ -196,6 +200,7 @@ select option:checked{background:var(--sage);color:var(--sage-ink)}
 /* Sheet */
 .sheet-bg{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--ink) 35%,transparent);display:flex;justify-content:flex-end;animation:fade .2s ease}
 .sheet{background:var(--paper);width:min(520px,100%);height:100%;overflow:auto;padding:22px 28px calc(28px + env(safe-area-inset-bottom));border-left:1px solid var(--rule);animation:slide .28s cubic-bezier(.2,.8,.2,1)}
+.sheet-top [data-close]{min-height:44px;min-width:44px;padding:0 2px}
 .sheet-top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:22px}
 .sheet h2{font-size:28px;letter-spacing:-.01em;margin-bottom:6px}
 .sheet .sub{color:var(--soft);margin-bottom:18px}
